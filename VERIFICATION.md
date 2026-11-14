@@ -10,7 +10,7 @@ Perintah dijalankan dengan cache Gradle/Android diarahkan ke `/tmp` dan compiler
 GRADLE_USER_HOME=/tmp/athra-gradle ANDROID_USER_HOME=/tmp/athra-android ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:compileDebugAndroidTestKotlin --no-configuration-cache --console=plain -Pkotlin.compiler.execution.strategy=in-process
 ```
 
-Hasil terakhir: **BUILD SUCCESSFUL**. Tiga belas unit test domain lulus, lint lulus pada pemeriksaan terakhir, APK debug berhasil dibuat, dan sepuluh test Android (lima integration Room termasuk benchmark 10.000 set + lima Compose smoke test) berhasil dikompilasi. Lint melaporkan warning dependency versi lebih baru, satu saran modifier Compose, label Activity redundan, serta resource template yang tidak dipakai; tidak ada lint error.
+Hasil terakhir (14 November 2026): **BUILD SUCCESSFUL**. Tiga belas unit test domain lulus, lint lulus, APK debug berhasil dibuat, dan sepuluh test Android (lima integration Room termasuk benchmark 10.000 set + lima Compose smoke test) berhasil dikompilasi. Input workout sekarang memilih keyboard angka/desimal, menangani aksi IME, dan menambahkan inset keyboard ke area scroll. Pengamatan StateFlow di Activity memakai `collectAsStateWithLifecycle`. Lint melaporkan warning dependency versi lebih baru, saran modifier Compose, label Activity redundan, serta resource template yang tidak dipakai; tidak ada lint error.
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
@@ -44,12 +44,12 @@ Status “implementasi ada” berarti alur/kode ditemukan dalam aplikasi; itu bu
 | AC35–38 | Filter/detail, pencegahan duplikat exercise, edit profil, dan preferensi per UID tersedia; perlu uji UI dan relaunch. |
 | AC39 | Workout tersimpan lokal setelah akun disiapkan; kondisi offline belum diuji pada perangkat. |
 | AC40 | Dialog konfirmasi discard dan transaksi hapus tersedia; integration test dibuat, belum dijalankan. |
-| AC41 | Layout utama dapat discroll, tetapi keyboard layar kecil dan font 200% belum diverifikasi. |
+| AC41 | Layout utama dapat discroll; input workout memakai keyboard numerik/desimal dan inset IME. Keyboard layar kecil, touch target, dan font 200% belum diverifikasi runtime. |
 | AC42 | Integration benchmark fixture 10.000 set tersedia dan menguji hasil serta target 2 detik; belum dijalankan atau diukur pada perangkat. |
 
 ## Teori perkuliahan dan lokasi kode
 
-1. **Activity dan lifecycle** — `MainActivity` menjadi host Compose tunggal dan mengelola ViewModel.
+1. **Activity dan lifecycle** — `MainActivity` menjadi host Compose tunggal, mengelola ViewModel, dan mengamati StateFlow dengan `collectAsStateWithLifecycle`.
 2. **Navigation** — `ui/navigation/NavGraph.kt` mengatur tab utama dan route workout, history, profile, serta preferences.
 3. **Coroutine / background task** — `WorkoutViewModel` menjalankan operasi database dan kalkulasi melalui `Dispatchers.IO` dan `viewModelScope`.
 4. **State dan ViewModel** — `WorkoutViewModel` mengekspos `StateFlow`; UI Compose mengamati state dan mengirim aksi kembali ke ViewModel.

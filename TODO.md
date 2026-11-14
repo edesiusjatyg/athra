@@ -59,7 +59,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [ ] Buat workout graph untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. (Nested graph Start/Active sudah ada; Library/Filters/Detail masih berupa dialog di Active, Summary memakai status REVIEW pada layar sama.)
 - [x] Tambahkan route History, Workout Detail, Edit Profile, dan Preferences; validasi UID saat membuka detail lewat ID route.
 - [ ] Scope satu WorkoutViewModel ke workout graph agar Library, Active, dan Summary membaca sesi yang sama.
-- [ ] Gunakan unidirectional data flow, StateFlow, state hoisting, lifecycle-aware collection, serta SavedStateHandle untuk state layar/input sementara yang sesuai.
+- [ ] Gunakan unidirectional data flow, StateFlow, state hoisting, lifecycle-aware collection, serta SavedStateHandle untuk state layar/input sementara yang sesuai. StateFlow dan `collectAsStateWithLifecycle` sudah dipakai; state form memakai `rememberSaveable`, tetapi SavedStateHandle dan audit state hoisting belum selesai.
 - [x] Pertahankan asal navigasi Exercise Details agar Back kembali ke Library atau Active yang benar. Detail gerakan berada dalam dialog bertingkat di Active dan Back mengembalikan katalog.
 - [x] Terapkan Back sesuai state workout: jangan pernah membuang sesi tanpa konfirmasi; Active dapat tetap latihan, kembali dengan draft, atau buang sesi.
 
@@ -107,7 +107,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [x] Sesuaikan tema gelap ATHRA dengan Figma atau token fallback PRD; jangan menyalin elemen status bar/home indicator iOS.
 - [x] Pastikan seluruh kontrol yang terlihat punya aksi yang benar; hilangkan kontrol placeholder dan angka personal hardcoded.
 - [ ] Tangani loading, empty, validasi, network/storage error, retry, detail tidak ditemukan, dan recovery draft sesuai tabel PRD.
-- [ ] Pastikan keyboard tidak menutup input/CTA, layout dapat di-scroll, system insets benar, touch target minimal 48 dp, dan font scale 200% tetap dapat dipakai.
+- [ ] Pastikan keyboard tidak menutup input/CTA, layout dapat di-scroll, system insets benar, touch target minimal 48 dp, dan font scale 200% tetap dapat dipakai. Input workout kini memakai papan ketik angka/desimal dan `imePadding`; perlu verifikasi pada perangkat untuk keyboard, ukuran layar kecil, touch target, dan font 200%.
 - [ ] Tambahkan label input, content description ikon, dan indikator PR/delta yang tidak hanya mengandalkan warna.
 - [ ] Pastikan query database dan kalkulasi berjalan di luar main thread; batalkan query usang ketika search/periode/akun berubah. (I/O berjalan di Dispatchers.IO dan periode membatalkan request lama; pencarian katalog lokal dan pergantian akun belum punya uji pembatalan khusus.)
 - [ ] Verifikasi rotasi, background/foreground, process death, retry, pergantian akun, dan transaksi parsial tanpa kehilangan set yang tersimpan.

@@ -5,9 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
         )[AuthViewModel::class.java]
         setContent {
             AthraTheme {
-                val state by authViewModel.state.collectAsState()
+                val state by authViewModel.state.collectAsStateWithLifecycle()
                 when {
                     state.restoring -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
@@ -59,8 +59,9 @@ class MainActivity : ComponentActivity() {
                                 WorkoutViewModelFactory(user.uid, container.workoutRepository),
                             ).get("workout_${user.uid}", WorkoutViewModel::class.java)
                         }
-                        val workoutState by workoutViewModel.state.collectAsState()
-                        val unit by remember(user.uid) { container.unitPreferences.observe(user.uid) }.collectAsState(initial = WeightUnit.KG)
+                        val workoutState by workoutViewModel.state.collectAsStateWithLifecycle()
+                        val unit by remember(user.uid) { container.unitPreferences.observe(user.uid) }
+                            .collectAsStateWithLifecycle(initialValue = WeightUnit.KG)
                         val navController = rememberNavController()
                         AthraNavGraph(
                             navController = navController,

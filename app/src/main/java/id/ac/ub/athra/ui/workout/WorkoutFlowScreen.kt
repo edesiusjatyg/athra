@@ -10,7 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import id.ac.ub.athra.domain.calculation.calculateTotals
 import id.ac.ub.athra.domain.calculation.displayNumber
 import id.ac.ub.athra.domain.calculation.displayWeight
@@ -42,6 +47,7 @@ fun WorkoutFlowScreen(
     clock: WorkoutClock = SystemWorkoutClock,
 ) {
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     var exerciseId by rememberSaveable(draft.session.id) { mutableStateOf(draft.exercises.firstOrNull()?.exercise?.id.orEmpty()) }
     var reps by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
@@ -74,7 +80,7 @@ fun WorkoutFlowScreen(
             navigationIcon = { TextButton(onClick = onExit) { Text("Kembali") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Background))
     }) { inset ->
-        Column(Modifier.fillMaxSize().padding(inset).verticalScroll(rememberScrollState()).padding(20.dp)) {
+        Column(Modifier.fillMaxSize().padding(inset).imePadding().verticalScroll(rememberScrollState()).padding(20.dp)) {
             Text(draft.session.name, style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(8.dp))
             Text("Durasi  $timer", style = MaterialTheme.typography.titleLarge)
@@ -127,8 +133,23 @@ fun WorkoutFlowScreen(
                 TextButton(onClick = { showLibrary = true }) { Text("+ Tambah gerakan") }
                 if (selected != null) {
                     Text("Catat set · ${selected.exercise.name}", style = MaterialTheme.typography.titleMedium)
-                    OutlinedTextField(reps, { reps = it }, label = { Text("Repetisi") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(weight, { weight = it }, label = { Text("Beban (${weightUnit.name.lowercase()})") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = reps,
+                        onValueChange = { reps = it },
+                        label = { Text("Repetisi") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = weight,
+                        onValueChange = { weight = it },
+                        label = { Text("Beban (${weightUnit.name.lowercase()})") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Button(onClick = {
                         scope.launch {
                             val unchangedWeight = editingSetId != null && weight == editingOriginalDisplay
@@ -214,7 +235,15 @@ fun WorkoutFlowScreen(
                     TextButton(onClick = { detailExerciseId = null }) { Text("Kembali ke katalog") }
                 }
             } else Column {
-                OutlinedTextField(search, { search = it }, label = { Text("Cari gerakan") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    label = { Text("Cari gerakan") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 Box {
                     TextButton(onClick = { pendingMuscleFilter = muscleFilter; filterMenu = true }) { Text("Kelompok otot: $pendingMuscleFilter ▾") }
                     DropdownMenu(expanded = filterMenu, onDismissRequest = { filterMenu = false }) {
