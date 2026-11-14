@@ -26,6 +26,7 @@ fun PreWorkoutScreen(
     onContinueDraft: () -> Unit = {},
     onDiscardDraft: () -> Unit = {},
     busy: Boolean = false,
+    loading: Boolean = false,
     error: String? = null,
     onRetry: () -> Unit = onBeginSession,
 ) {
@@ -44,11 +45,14 @@ fun PreWorkoutScreen(
             Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (hasDraft) {
+            if (loading) {
+                CircularProgressIndicator()
+                Text("Memeriksa sesi tersimpan…", color = Secondary)
+            } else if (hasDraft) {
                 Text("Sesi latihan belum selesai", style = MaterialTheme.typography.headlineLarge, color = Ink)
                 Text("Lanjutkan draft yang tersimpan atau buang sebelum membuat sesi baru.", color = Secondary)
-                Button(onClick = onContinueDraft, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Lanjutkan sesi") }
-                OutlinedButton(onClick = { confirmDiscard = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Buang draft dan mulai baru") }
+                Button(onClick = onContinueDraft, enabled = !busy && error == null, modifier = Modifier.fillMaxWidth()) { Text("Lanjutkan sesi") }
+                OutlinedButton(onClick = { confirmDiscard = true }, enabled = !busy && error == null, modifier = Modifier.fillMaxWidth()) { Text("Buang draft dan mulai baru") }
             } else {
                 Text("Siap berlatih?", style = MaterialTheme.typography.headlineLarge, color = Ink)
                 Text("Sesi mulai dicatat saat kamu memilih salah satu aksi.", color = Secondary)
@@ -56,9 +60,9 @@ fun PreWorkoutScreen(
                     Text("Mulai workout", style = MaterialTheme.typography.titleLarge, color = Ink)
                     Text("Buat sesi baru, lalu tambahkan gerakan dan set.", color = Secondary)
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = onBeginSession, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Mulai workout") }
+                    Button(onClick = onBeginSession, enabled = !busy && error == null, modifier = Modifier.fillMaxWidth()) { Text("Mulai workout") }
                 }
-                OutlinedButton(onClick = onQuickStart, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                OutlinedButton(onClick = onQuickStart, enabled = !busy && error == null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("Mulai cepat")
                 }
             }

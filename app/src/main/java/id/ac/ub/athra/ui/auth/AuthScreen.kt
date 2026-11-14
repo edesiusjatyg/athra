@@ -21,6 +21,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -41,12 +42,13 @@ fun AuthScreen(
     onSignUp: (String, String, String, String) -> Unit,
     startInRegistration: Boolean = false,
     onSwitchMode: (Boolean) -> Unit = {},
+    onClearError: () -> Unit = {},
 ) {
     var registering by rememberSaveable { mutableStateOf(startInRegistration) }
     var name by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var confirmation by rememberSaveable { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
 
     Scaffold(containerColor = Background) { insets ->
         Column(
@@ -65,15 +67,15 @@ fun AuthScreen(
             Spacer(Modifier.height(24.dp))
 
             if (registering) {
-                AuthField("Nama", name, { name = it }, Modifier.fillMaxWidth())
+                AuthField("Nama", name, { name = it; onClearError() }, Modifier.fillMaxWidth(), error = state.nameError)
                 Spacer(Modifier.height(12.dp))
             }
-            AuthField("Email", email, { email = it }, Modifier.fillMaxWidth())
+            AuthField("Email", email, { email = it; onClearError() }, Modifier.fillMaxWidth(), error = state.emailError)
             Spacer(Modifier.height(12.dp))
-            AuthField("Password", password, { password = it }, Modifier.fillMaxWidth(), secret = true)
+            AuthField("Password", password, { password = it; onClearError() }, Modifier.fillMaxWidth(), secret = true, error = state.passwordError)
             if (registering) {
                 Spacer(Modifier.height(12.dp))
-                AuthField("Konfirmasi password", confirmation, { confirmation = it }, Modifier.fillMaxWidth(), secret = true)
+                AuthField("Konfirmasi password", confirmation, { confirmation = it; onClearError() }, Modifier.fillMaxWidth(), secret = true, error = state.confirmationError)
             }
 
             state.error?.let {
@@ -92,7 +94,13 @@ fun AuthScreen(
             ) {
                 Text(if (state.busy) "Memproses…" else if (registering) "Daftar" else "Masuk", fontWeight = FontWeight.SemiBold)
             }
-            TextButton(onClick = { registering = !registering; onSwitchMode(registering) }) {
+            TextButton(onClick = {
+                registering = !registering
+                password = ""
+                confirmation = ""
+                onClearError()
+                onSwitchMode(registering)
+            }) {
                 Text(
                     if (registering) "Sudah punya akun? Masuk" else "Belum punya akun? Daftar",
                     color = Secondary,
@@ -110,11 +118,14 @@ private fun AuthField(
     onValueChange: (String) -> Unit,
     modifier: Modifier,
     secret: Boolean = false,
+    error: String? = null,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        isError = error != null,
+        supportingText = if (error == null) null else { { Text(error) } },
         singleLine = true,
         visualTransformation = if (secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         modifier = modifier,

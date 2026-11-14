@@ -15,6 +15,7 @@ fun AuthNavigation(
     state: AuthUiState,
     onSignIn: (String, String) -> Unit,
     onSignUp: (String, String, String, String) -> Unit,
+    onClearError: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = AuthRoutes.SIGN_IN) {
@@ -23,6 +24,7 @@ fun AuthNavigation(
                 state = state,
                 onSignIn = onSignIn,
                 onSignUp = onSignUp,
+                onClearError = onClearError,
                 startInRegistration = false,
                 onSwitchMode = { registering ->
                     if (registering) navController.navigate(AuthRoutes.SIGN_UP) {
@@ -37,6 +39,7 @@ fun AuthNavigation(
                 state = state,
                 onSignIn = onSignIn,
                 onSignUp = onSignUp,
+                onClearError = onClearError,
                 startInRegistration = true,
                 onSwitchMode = { registering ->
                     if (!registering) navController.popBackStack(AuthRoutes.SIGN_IN, inclusive = false)

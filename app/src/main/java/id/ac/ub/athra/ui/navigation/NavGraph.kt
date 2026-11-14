@@ -9,6 +9,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import id.ac.ub.athra.ui.workout.WorkoutUiState
@@ -16,6 +18,11 @@ import id.ac.ub.athra.ui.screens.HomeScreen
 import id.ac.ub.athra.ui.screens.PreWorkoutScreen
 import id.ac.ub.athra.ui.workout.WorkoutViewModel
 import id.ac.ub.athra.ui.workout.WorkoutFlowScreen
+import id.ac.ub.athra.ui.workout.QuickStartScreen
+import id.ac.ub.athra.ui.workout.ExerciseLibraryScreen
+import id.ac.ub.athra.ui.workout.ExerciseFiltersScreen
+import id.ac.ub.athra.ui.workout.ExerciseDetailsScreen
+import id.ac.ub.athra.ui.workout.WorkoutSummaryScreen
 import id.ac.ub.athra.ui.screens.ProgressScreen
 import id.ac.ub.athra.ui.screens.HistoryScreen
 import id.ac.ub.athra.ui.screens.WorkoutDetailScreen
@@ -27,8 +34,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import id.ac.ub.athra.domain.model.CompletedWorkout
 import id.ac.ub.athra.domain.model.WeightUnit
+import id.ac.ub.athra.domain.model.SessionStatus
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -69,16 +76,19 @@ fun AthraNavGraph(
     onSaveUnit: suspend (WeightUnit) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    var periodDays by rememberSaveable { mutableIntStateOf(7) }
-    var selectedWorkout by remember { mutableStateOf<CompletedWorkout?>(null) }
+    var periodDays by rememberSaveable { mutableIntStateOf(30) }
     var showFixtureConfirm by rememberSaveable(userId) { mutableStateOf(false) }
     var fixtureBusy by rememberSaveable(userId) { mutableStateOf(false) }
     var fixtureMessage by rememberSaveable(userId) { mutableStateOf<String?>(null) }
     var fixtureMessageIsError by rememberSaveable(userId) { mutableStateOf(false) }
     fun openWorkoutDetail(sessionId: String) {
+        navController.navigate(Routes.WorkoutDetail.create(sessionId))
+    }
+    fun exitWorkoutToHome() {
         scope.launch {
-            selectedWorkout = workoutViewModel.loadWorkoutDetail(sessionId)
-            navController.navigate(Routes.WorkoutDetail.route)
+            workoutViewModel.refreshDraft().join()
+            workoutViewModel.refreshHomeAnalytics().join()
+            navController.popBackStack(Routes.Home.route, false)
         }
     }
     NavHost(
@@ -91,10 +101,25 @@ fun AthraNavGraph(
                 draft = workoutState.draft,
                 recentSessions = workoutState.recentSessions,
                 analytics = workoutState.homeAnalytics,
+                loading = workoutState.loading || workoutState.homeAnalyticsLoading || workoutState.historyLoading,
+                draftLoading = workoutState.draftLoading,
+                draftError = workoutState.draftError,
+                error = workoutState.error ?: workoutState.homeAnalyticsError ?: workoutState.historyError,
+                onRetry = {
+                    workoutViewModel.refreshDraft()
+                    workoutViewModel.refreshHomeAnalytics()
+                    workoutViewModel.refreshHistory()
+                },
                 onStartWorkout = { navController.navigate(Routes.WorkoutGraph.route) },
                 onResumeWorkout = {
-                    onResumeWorkout()
-                    workoutState.draft?.let { navController.navigate(Routes.LiveWorkout.route) }
+                    scope.launch {
+                        workoutViewModel.refreshDraft().join()
+                        val draft = workoutViewModel.state.value.draft ?: return@launch
+                        navController.navigate(Routes.WorkoutGraph.route) { launchSingleTop = true }
+                        navController.navigate(
+                            if (draft.session.status == SessionStatus.REVIEW) Routes.Summary.route else Routes.LiveWorkout.route,
+                        ) { launchSingleTop = true }
+                    }
                 },
                 onViewAll = { navController.navigate(Routes.History.route) },
                 onOpenSession = ::openWorkoutDetail,
@@ -108,34 +133,107 @@ fun AthraNavGraph(
             composable(Routes.PreWorkout.route) { backStackEntry ->
                 val graphViewModel = rememberWorkoutGraphViewModel(navController, backStackEntry, workoutViewModelFactory)
                 val graphState by graphViewModel.state.collectAsStateWithLifecycle()
+                fun continueDraft() {
+                    val draft = graphState.draft ?: return
+                    val destination = when {
+                        draft.session.status == SessionStatus.REVIEW -> Routes.Summary.route
+                        draft.exercises.isEmpty() -> Routes.ExerciseLibrary.route
+                        else -> Routes.LiveWorkout.route
+                    }
+                    navController.navigate(destination) { launchSingleTop = true }
+                }
                 PreWorkoutScreen(
                     hasDraft = graphState.draft != null,
                     busy = graphState.busy,
-                    error = graphState.error,
-                    onRetry = { scope.launch { graphViewModel.start() } },
+                    loading = graphState.draftLoading,
+                    error = graphState.draftError ?: graphState.error,
+                    onRetry = { graphViewModel.refreshDraft() },
                     onBack = { navController.popBackStack() },
                     onBeginSession = {
                         scope.launch {
-                            if (graphViewModel.start() != null) navController.navigate(Routes.LiveWorkout.route)
+                            if (graphViewModel.start() != null) navController.navigate(Routes.ExerciseLibrary.route)
                         }
                     },
-                    onQuickStart = {
+                    onQuickStart = { navController.navigate(Routes.QuickStart.route) },
+                    onContinueDraft = ::continueDraft,
+                    onDiscardDraft = {
                         scope.launch {
-                            if (graphViewModel.start() != null) navController.navigate(Routes.LiveWorkout.route)
-                        }
-                    },
-                    onContinueDraft = {
-                        scope.launch {
-                            graphState.draft?.let {
-                                graphViewModel.resume(it.session.id)
-                                navController.navigate(Routes.LiveWorkout.route)
+                            val draft = graphState.draft ?: return@launch
+                            if (graphViewModel.discardResult(draft.session.id) && graphViewModel.start() != null) {
+                                navController.navigate(Routes.ExerciseLibrary.route)
                             }
                         }
                     },
-                    onDiscardDraft = {
+                )
+            }
+            composable(Routes.QuickStart.route) { backStackEntry ->
+                val graphViewModel = rememberWorkoutGraphViewModel(navController, backStackEntry, workoutViewModelFactory)
+                val graphState by graphViewModel.state.collectAsStateWithLifecycle()
+                QuickStartScreen(
+                    name = graphState.quickStartName,
+                    busy = graphState.busy,
+                    error = graphState.error,
+                    onNameChange = graphViewModel::updateQuickStartName,
+                    onBack = { navController.popBackStack() },
+                    onStart = {
                         scope.launch {
-                            graphState.draft?.let { graphViewModel.discard(it.session.id) }
-                            if (graphViewModel.start() != null) navController.navigate(Routes.LiveWorkout.route)
+                            if (graphViewModel.start(graphState.quickStartName) != null) {
+                                graphViewModel.updateQuickStartName("")
+                                navController.navigate(Routes.ExerciseLibrary.route)
+                            }
+                        }
+                    },
+                )
+            }
+            composable(Routes.ExerciseLibrary.route) { backStackEntry ->
+                val graphViewModel = rememberWorkoutGraphViewModel(navController, backStackEntry, workoutViewModelFactory)
+                val graphState by graphViewModel.state.collectAsStateWithLifecycle()
+                ExerciseLibraryScreen(
+                    state = graphState,
+                    onSearchChange = graphViewModel::updateLibrarySearch,
+                    onOpenFilters = { navController.navigate(Routes.ExerciseFilters.route) },
+                    onOpenDetails = { exerciseId -> navController.navigate(Routes.ExerciseDetails.create(exerciseId)) },
+                    onBack = { navController.popBackStack() },
+                    onRetry = { graphViewModel.retryCatalog() },
+                )
+            }
+            composable(Routes.ExerciseFilters.route) { backStackEntry ->
+                val graphViewModel = rememberWorkoutGraphViewModel(navController, backStackEntry, workoutViewModelFactory)
+                val graphState by graphViewModel.state.collectAsStateWithLifecycle()
+                ExerciseFiltersScreen(
+                    selected = graphState.pendingLibraryFilter,
+                    onSelect = graphViewModel::updatePendingLibraryFilter,
+                    onReset = graphViewModel::resetLibraryFilter,
+                    onApply = { graphViewModel.applyLibraryFilter(); navController.popBackStack() },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = Routes.ExerciseDetails.route,
+                arguments = listOf(navArgument("exerciseId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val graphViewModel = rememberWorkoutGraphViewModel(navController, backStackEntry, workoutViewModelFactory)
+                val graphState by graphViewModel.state.collectAsStateWithLifecycle()
+                val exerciseId = backStackEntry.arguments?.getString("exerciseId").orEmpty()
+                val exercise = graphState.catalog.firstOrNull { it.id == exerciseId }
+                ExerciseDetailsScreen(
+                    exercise = exercise,
+                    reference = graphState.exerciseReferences[exerciseId],
+                    weightUnit = weightUnit,
+                    busy = graphState.busy,
+                    error = graphState.error,
+                    onBack = { navController.popBackStack() },
+                    onAdd = {
+                        scope.launch {
+                            val sessionId = graphViewModel.state.value.draft?.session?.id ?: return@launch
+                            if (graphViewModel.addExerciseResult(sessionId, exerciseId)) {
+                                graphViewModel.selectExercise(exerciseId)
+                                val returnedToActive = navController.popBackStack(Routes.LiveWorkout.route, inclusive = false)
+                                if (!returnedToActive) {
+                                    navController.popBackStack(Routes.ExerciseLibrary.route, inclusive = true)
+                                    navController.navigate(Routes.LiveWorkout.route) { launchSingleTop = true }
+                                }
+                            }
                         }
                     },
                 )
@@ -145,13 +243,16 @@ fun AthraNavGraph(
                 val graphState by graphViewModel.state.collectAsStateWithLifecycle()
                 val draft = graphState.draft
                 if (draft == null) {
-                    androidx.compose.material3.CircularProgressIndicator()
+                    Column(Modifier.fillMaxSize(), verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center, horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Text("Memuat sesi latihan…")
+                        graphState.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        TextButton(onClick = { graphViewModel.refreshDraft() }) { Text("Coba lagi") }
+                    }
                 } else {
-                    val exitWorkout: () -> Unit = {
-                        scope.launch {
-                            workoutViewModel.refreshDraft().join()
-                            workoutViewModel.refreshHomeAnalytics().join()
-                            navController.popBackStack(Routes.Home.route, false)
+                    LaunchedEffect(draft.session.status) {
+                        if (draft.session.status == SessionStatus.REVIEW) {
+                            navController.navigate(Routes.Summary.route) { launchSingleTop = true }
                         }
                     }
                     WorkoutFlowScreen(
@@ -161,12 +262,52 @@ fun AthraNavGraph(
                         onDeleteSet = graphViewModel::deleteSet,
                         onAddExercise = graphViewModel::addExercise,
                         onRemoveExercise = graphViewModel::removeExercise,
-                        onFinish = graphViewModel::finish,
+                        onFinish = { sessionId ->
+                            val finished = graphViewModel.finish(sessionId)
+                            if (finished) navController.navigate(Routes.Summary.route) { launchSingleTop = true }
+                            finished
+                        },
                         onResume = graphViewModel::resume,
                         onSave = graphViewModel::save,
                         onDiscard = graphViewModel::discard,
-                        onExit = exitWorkout,
+                        onDiscardResult = graphViewModel::discardResult,
+                        onExit = ::exitWorkoutToHome,
+                        onOpenLibrary = { navController.navigate(Routes.ExerciseLibrary.route) },
+                        onOpenExerciseDetails = { id -> navController.navigate(Routes.ExerciseDetails.create(id)) },
+                        onUpdateSetInputs = graphViewModel::updateSetInputs,
+                        onSelectExercise = graphViewModel::selectExercise,
+                        onEditSetInputs = graphViewModel::editSetInputs,
+                        onClearSetForm = graphViewModel::clearSetForm,
                         weightUnit = weightUnit,
+                    )
+                }
+            }
+            composable(Routes.Summary.route) { backStackEntry ->
+                val graphViewModel = rememberWorkoutGraphViewModel(navController, backStackEntry, workoutViewModelFactory)
+                val graphState by graphViewModel.state.collectAsStateWithLifecycle()
+                val draft = graphState.draft
+                if (draft == null) {
+                    Column(Modifier.fillMaxSize(), verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center, horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                        if (graphState.loading || graphState.busy) CircularProgressIndicator()
+                        Text(graphState.error ?: "Memuat ringkasan…")
+                        TextButton(onClick = { graphViewModel.refreshDraft() }) { Text("Coba lagi") }
+                    }
+                } else if (draft.session.status != SessionStatus.REVIEW) {
+                    LaunchedEffect(draft.session.status) { navController.popBackStack() }
+                } else {
+                    WorkoutSummaryScreen(
+                        draft = draft,
+                        state = graphState,
+                        weightUnit = weightUnit,
+                        onResume = {
+                            scope.launch { if (graphViewModel.resumeResult(draft.session.id)) navController.popBackStack() }
+                        },
+                        onSave = {
+                            scope.launch { if (graphViewModel.save(draft.session.id)) exitWorkoutToHome() }
+                        },
+                        onDiscard = {
+                            scope.launch { if (graphViewModel.discardResult(draft.session.id)) exitWorkoutToHome() }
+                        },
                     )
                 }
             }
@@ -177,6 +318,9 @@ fun AthraNavGraph(
                 analytics = workoutState.analytics,
                 periodDays = periodDays,
                 weightUnit = weightUnit,
+                loading = workoutState.analyticsLoading,
+                error = workoutState.analyticsError,
+                onRetry = { workoutViewModel.refreshAnalytics(periodDays) },
                 onPeriodChange = { days -> periodDays = days; workoutViewModel.refreshAnalytics(days) },
                 onNavigate = { tab -> if (tab != 2) navController.navigateTab(tab) },
             )
@@ -184,6 +328,9 @@ fun AthraNavGraph(
         composable(Routes.History.route) {
             HistoryScreen(
                 sessions = workoutState.recentSessions,
+                loading = workoutState.historyLoading,
+                error = workoutState.historyError,
+                onRetry = workoutViewModel::refreshHistory,
                 onOpen = ::openWorkoutDetail,
                 onNavigate = { tab -> navController.navigateTab(tab) },
             )
@@ -197,6 +344,11 @@ fun AthraNavGraph(
                 topBar = { TopAppBar(title = { Text("Profil") }) },
             ) { insets ->
                 Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp)) {
+                    if (workoutState.profileLoading && workoutState.profileName.isBlank()) CircularProgressIndicator()
+                    workoutState.profileError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                        TextButton(onClick = { workoutViewModel.refreshProfile() }) { Text("Coba lagi") }
+                    }
                     Text(userName, style = MaterialTheme.typography.headlineMedium)
                     Text(userEmail, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Data latihan tersimpan di perangkat ini.")
@@ -225,8 +377,20 @@ fun AthraNavGraph(
                 }
             }
         }
-        composable(Routes.WorkoutDetail.route) {
-            WorkoutDetailScreen(selectedWorkout, weightUnit) { navController.popBackStack() }
+        composable(
+            route = Routes.WorkoutDetail.route,
+            arguments = listOf(navArgument("sessionId") { type = NavType.StringType }),
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getString("sessionId").orEmpty()
+            LaunchedEffect(sessionId) { workoutViewModel.loadWorkoutDetail(sessionId) }
+            WorkoutDetailScreen(
+                workout = workoutState.selectedWorkoutDetail,
+                weightUnit = weightUnit,
+                loading = workoutState.workoutDetailLoading,
+                error = workoutState.workoutDetailError,
+                onBack = { navController.popBackStack() },
+                onRetry = { scope.launch { workoutViewModel.loadWorkoutDetail(sessionId) } },
+            )
         }
         composable(Routes.Preferences.route) {
             PreferencesScreen(
@@ -239,9 +403,10 @@ fun AthraNavGraph(
             EditProfileScreen(
                 initialName = workoutState.profileName.ifBlank { userName },
                 email = workoutState.profileEmail.ifBlank { userEmail },
-                error = workoutState.error,
+                error = workoutState.profileError ?: workoutState.error,
                 onBack = { workoutViewModel.refreshProfile(); navController.popBackStack() },
                 onSave = { name -> scope.launch { if (workoutViewModel.updateProfileName(name)) navController.popBackStack() } },
+                busy = workoutState.busy,
             )
         }
     }

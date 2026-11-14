@@ -21,6 +21,10 @@ data class AuthUiState(
     val busy: Boolean = false,
     val user: AuthUser? = null,
     val error: String? = null,
+    val nameError: String? = null,
+    val emailError: String? = null,
+    val passwordError: String? = null,
+    val confirmationError: String? = null,
 )
 
 class AuthViewModel(
@@ -66,17 +70,27 @@ class AuthViewModel(
     fun signIn(email: String, password: String) {
         if (mutableState.value.busy) return
         val cleanEmail = email.trim()
-        val validation = when {
-            !Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches() -> "Masukkan email yang valid."
-            password.isEmpty() -> "Password wajib diisi."
-            else -> null
-        }
-        if (validation != null) {
-            mutableState.value = mutableState.value.copy(error = validation)
+        val emailError = if (!Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) "Masukkan email yang valid." else null
+        val passwordError = if (password.isEmpty()) "Password wajib diisi." else null
+        if (emailError != null || passwordError != null) {
+            mutableState.value = mutableState.value.copy(
+                error = null,
+                nameError = null,
+                emailError = emailError,
+                passwordError = passwordError,
+                confirmationError = null,
+            )
             return
         }
         viewModelScope.launch {
-            mutableState.value = mutableState.value.copy(busy = true, error = null)
+            mutableState.value = mutableState.value.copy(
+                busy = true,
+                error = null,
+                nameError = null,
+                emailError = null,
+                passwordError = null,
+                confirmationError = null,
+            )
             try {
                 authRepository.signIn(cleanEmail, password)
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
@@ -95,19 +109,29 @@ class AuthViewModel(
         if (mutableState.value.busy) return
         val cleanName = name.trim()
         val cleanEmail = email.trim()
-        val validation = when {
-            cleanName.isEmpty() -> "Nama wajib diisi."
-            !Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches() -> "Masukkan email yang valid."
-            password.length < 6 -> "Password minimal 6 karakter."
-            password != confirmation -> "Konfirmasi password belum cocok."
-            else -> null
-        }
-        if (validation != null) {
-            mutableState.value = mutableState.value.copy(error = validation)
+        val nameError = if (cleanName.isEmpty()) "Nama wajib diisi." else null
+        val emailError = if (!Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) "Masukkan email yang valid." else null
+        val passwordError = if (password.length < 6) "Password minimal 6 karakter." else null
+        val confirmationError = if (password != confirmation) "Konfirmasi password belum cocok." else null
+        if (nameError != null || emailError != null || passwordError != null || confirmationError != null) {
+            mutableState.value = mutableState.value.copy(
+                error = null,
+                nameError = nameError,
+                emailError = emailError,
+                passwordError = passwordError,
+                confirmationError = confirmationError,
+            )
             return
         }
         viewModelScope.launch {
-            mutableState.value = mutableState.value.copy(busy = true, error = null)
+            mutableState.value = mutableState.value.copy(
+                busy = true,
+                error = null,
+                nameError = null,
+                emailError = null,
+                passwordError = null,
+                confirmationError = null,
+            )
             var createdUser: AuthUser? = null
             try {
                 val user = profileSetupMutex.withLock {
@@ -136,7 +160,13 @@ class AuthViewModel(
     }
 
     fun clearError() {
-        mutableState.value = mutableState.value.copy(error = null)
+        mutableState.value = mutableState.value.copy(
+            error = null,
+            nameError = null,
+            emailError = null,
+            passwordError = null,
+            confirmationError = null,
+        )
     }
 
     fun retryLocalSetup() {

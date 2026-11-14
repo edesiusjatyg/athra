@@ -5,8 +5,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.key
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,39 +57,61 @@ class MainActivity : ComponentActivity() {
                         Button(onClick = authViewModel::retryLocalSetup) { Text("Coba lagi") }
                         Button(onClick = authViewModel::signOut) { Text("Keluar") }
                     }
-                    state.user == null -> AuthNavigation(state, authViewModel::signIn, authViewModel::signUp)
+                    state.user == null -> AuthNavigation(
+                        state,
+                        authViewModel::signIn,
+                        authViewModel::signUp,
+                        authViewModel::clearError,
+                    )
                     else -> {
                         val user = state.user!!
+                        key(user.uid) {
+                        val workoutStoreOwner = remember(user.uid) { UserWorkoutStoreOwner() }
+                        DisposableEffect(workoutStoreOwner) {
+                            onDispose { workoutStoreOwner.clear() }
+                        }
                         val workoutFactory = remember(user.uid) {
                             WorkoutViewModelFactory(user.uid, container.workoutRepository)
                         }
+                        val workoutGraphFactory = remember(user.uid) {
+                            WorkoutViewModelFactory(user.uid, container.workoutRepository, savedStateEnabled = true)
+                        }
                         val workoutViewModel = remember(user.uid) {
                             ViewModelProvider(
-                                this@MainActivity,
+                                workoutStoreOwner,
                                 workoutFactory,
-                            ).get("workout_${user.uid}", WorkoutViewModel::class.java)
+                            ).get("workout", WorkoutViewModel::class.java)
                         }
                         val workoutState by workoutViewModel.state.collectAsStateWithLifecycle()
                         val unit by remember(user.uid) { container.unitPreferences.observe(user.uid) }
                             .collectAsStateWithLifecycle(initialValue = WeightUnit.KG)
                         val navController = rememberNavController()
-                        AthraNavGraph(
-                            navController = navController,
-                            userId = user.uid,
-                            database = athraApplication.database,
-                            userName = workoutState.profileName.ifBlank { user.displayName.ifBlank { user.email.substringBefore('@') } },
-                            workoutState = workoutState,
-                            workoutViewModel = workoutViewModel,
-                            workoutViewModelFactory = workoutFactory,
-                            onResumeWorkout = { workoutViewModel.refreshDraft() },
-                            onSignOut = authViewModel::signOut,
-                            userEmail = user.email,
-                            weightUnit = unit,
-                            onSaveUnit = { next -> container.unitPreferences.set(user.uid, next) },
-                        )
+                        CompositionLocalProvider(LocalViewModelStoreOwner provides workoutStoreOwner) {
+                            AthraNavGraph(
+                                navController = navController,
+                                userId = user.uid,
+                                database = athraApplication.database,
+                                userName = workoutState.profileName.ifBlank { user.displayName.ifBlank { user.email.substringBefore('@') } },
+                                workoutState = workoutState,
+                                workoutViewModel = workoutViewModel,
+                                workoutViewModelFactory = workoutGraphFactory,
+                                onResumeWorkout = { workoutViewModel.refreshDraft() },
+                                onSignOut = authViewModel::signOut,
+                                userEmail = user.email,
+                                weightUnit = unit,
+                                onSaveUnit = { next -> container.unitPreferences.set(user.uid, next) },
+                            )
+                        }
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private class UserWorkoutStoreOwner : ViewModelStoreOwner {
+    override val viewModelStore = ViewModelStore()
+
+    fun clear() = viewModelStore.clear()
 }

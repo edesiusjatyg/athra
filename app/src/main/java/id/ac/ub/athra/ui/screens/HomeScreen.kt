@@ -53,6 +53,11 @@ fun HomeScreen(
     onNavigate: (Int) -> Unit = {},
     onOpenSession: (String) -> Unit = {},
     weightUnit: WeightUnit = WeightUnit.KG,
+    loading: Boolean = false,
+    draftLoading: Boolean = false,
+    draftError: String? = null,
+    error: String? = null,
+    onRetry: () -> Unit = {},
 ) {
     Scaffold(
         containerColor = Background,
@@ -88,33 +93,51 @@ fun HomeScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // ── Next workout card ──
-            NextWorkoutCard(
-                hasDraft = draft != null,
-                onStartWorkout = if (draft != null) onResumeWorkout else onStartWorkout,
-            )
+            val hasLoadedContent = draft != null || analytics != null || recentSessions.isNotEmpty()
+            if (loading && !hasLoadedContent) {
+                Box(Modifier.fillMaxWidth().heightIn(min = 120.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (error != null && !hasLoadedContent) {
+                Text(error, color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Coba lagi") }
+            } else {
+                if (error != null) {
+                    Text(error, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Coba lagi") }
+                }
 
-            Spacer(Modifier.height(24.dp))
-
-            // ── This week stats ──
-            ThisWeekSection(analytics, weightUnit)
-
-            Spacer(Modifier.height(24.dp))
-
-            // ── Recent sessions ──
-            SectionHeader(title = "Sesi terbaru", action = "Lihat semua", onAction = onViewAll)
-            Spacer(Modifier.height(12.dp))
-            if (recentSessions.isEmpty()) {
-                Text("Belum ada sesi. Mulai latihan pertamamu.", color = Secondary)
-            } else recentSessions.take(3).forEach { session ->
-                RecentSessionRow(
-                    sessionId = session.id,
-                    name = session.name,
-                    meta = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
-                        .format(Instant.ofEpochMilli(session.endedAt ?: session.startedAt).atZone(ZoneId.systemDefault())),
-                    onClick = { onOpenSession(session.id) },
+                // ── Next workout card ──
+                NextWorkoutCard(
+                    hasDraft = draft != null,
+                    loading = draftLoading,
+                    error = draftError,
+                    onRetry = onRetry,
+                    onStartWorkout = if (draft != null) onResumeWorkout else onStartWorkout,
                 )
-                Spacer(Modifier.height(8.dp))
+
+                Spacer(Modifier.height(24.dp))
+
+                // ── This week stats ──
+                ThisWeekSection(analytics, weightUnit)
+
+                Spacer(Modifier.height(24.dp))
+
+                // ── Recent sessions ──
+                SectionHeader(title = "Sesi terbaru", action = "Lihat semua", onAction = onViewAll)
+                Spacer(Modifier.height(12.dp))
+                if (recentSessions.isEmpty()) {
+                    Text("Belum ada sesi. Mulai latihan pertamamu.", color = Secondary)
+                } else recentSessions.take(3).forEach { session ->
+                    RecentSessionRow(
+                        sessionId = session.id,
+                        name = session.name,
+                        meta = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
+                            .format(Instant.ofEpochMilli(session.endedAt ?: session.startedAt).atZone(ZoneId.systemDefault())),
+                        onClick = { onOpenSession(session.id) },
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -170,7 +193,13 @@ private fun HomeTopBar(userName: String, onOpenProfile: () -> Unit) {
 // ─── Next Workout Card ───────────────────────────────────────────────────────
 
 @Composable
-private fun NextWorkoutCard(hasDraft: Boolean, onStartWorkout: () -> Unit) {
+private fun NextWorkoutCard(
+    hasDraft: Boolean,
+    loading: Boolean,
+    error: String?,
+    onRetry: () -> Unit,
+    onStartWorkout: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -185,7 +214,12 @@ private fun NextWorkoutCard(hasDraft: Boolean, onStartWorkout: () -> Unit) {
     ) {
         Column {
             Text(
-                text = if (hasDraft) "SESI BELUM SELESAI" else "MULAI LATIHAN",
+                text = when {
+                    loading -> "MEMERIKSA SESI"
+                    error != null -> "SESI BELUM TERBACA"
+                    hasDraft -> "SESI BELUM SELESAI"
+                    else -> "MULAI LATIHAN"
+                },
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = Accent,
                     fontWeight = FontWeight.SemiBold,
@@ -194,15 +228,41 @@ private fun NextWorkoutCard(hasDraft: Boolean, onStartWorkout: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = if (hasDraft) "Lanjutkan workout" else "Siap berlatih?",
+                text = when {
+                    loading -> "Memuat sesi tersimpan"
+                    error != null -> "Periksa sesi tersimpan"
+                    hasDraft -> "Lanjutkan workout"
+                    else -> "Siap berlatih?"
+                },
                 style = MaterialTheme.typography.headlineMedium.copy(color = Ink),
             )
             Text(
-                text = if (hasDraft) "Draft tersimpan di perangkat ini" else "Buat sesi dan pilih gerakan",
+                text = when {
+                    loading -> "Memeriksa apakah ada draft yang perlu dilanjutkan."
+                    error != null -> "Draft belum dapat diperiksa. Coba muat ulang sebelum memulai."
+                    hasDraft -> "Draft tersimpan di perangkat ini"
+                    else -> "Buat sesi dan pilih gerakan"
+                },
                 style = MaterialTheme.typography.bodyMedium.copy(color = Secondary),
             )
             Spacer(Modifier.height(16.dp))
-            AthraButton(label = if (hasDraft) "Lanjutkan sesi" else "Mulai workout", onClick = onStartWorkout)
+            Button(
+                onClick = if (error != null) onRetry else onStartWorkout,
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Background),
+            ) {
+                Text(
+                    when {
+                        loading -> "Memuat…"
+                        error != null -> "Coba lagi"
+                        hasDraft -> "Lanjutkan sesi"
+                        else -> "Mulai workout"
+                    },
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
     }
 }
@@ -230,7 +290,14 @@ private fun ThisWeekSection(analytics: AnalyticsSummary?, weightUnit: WeightUnit
             Text("Sesi, set, dan volume", style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
         }
         Spacer(Modifier.height(12.dp))
-        Row(
+        val stackStats = LocalDensity.current.fontScale >= 1.5f
+        if (stackStats) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatCard(value = "%02d".format(analytics?.sessionCount ?: 0), label = "Sesi", modifier = Modifier.fillMaxWidth())
+                StatCard(value = "%02d".format(analytics?.setCount ?: 0), label = "Set", modifier = Modifier.fillMaxWidth())
+                StatCard(value = analytics?.volumeKg?.let { displayNumber(displayWeight(it, weightUnit)) } ?: "0", label = "Volume · ${weightUnit.name.lowercase()}", modifier = Modifier.fillMaxWidth())
+            }
+        } else Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -272,7 +339,9 @@ private fun RecentSessionRow(sessionId: String, name: String, meta: String, onCl
             .clip(CardShape)
             .background(Surface)
             .border(1.dp, Border, CardShape)
-            .clickable(onClick = onClick)
+            .heightIn(min = 64.dp)
+            .semantics(mergeDescendants = true) { }
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
