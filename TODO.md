@@ -25,22 +25,22 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 
 ## 1. Fondasi dan konfigurasi
 
-- [ ] Ubah applicationId ke id.ac.ub.athra; selaraskan namespace, package Kotlin, dan referensi test tanpa merusak launcher.
-- [ ] Tetapkan minSdk 26. Verifikasi compileSdk, targetSdk, AGP, Kotlin, JDK, Compose, Navigation, Room, Firebase, dan DataStore saling kompatibel; pin semua versi.
-- [ ] Tambahkan dependency yang diperlukan melalui version catalog; hindari versi dinamis.
-- [ ] Tambahkan konfigurasi Firebase Authentication Email/Password dan Auth Emulator yang hanya aktif di debug dengan flag eksplisit.
-- [ ] Tambahkan INTERNET permission hanya untuk autentikasi; pisahkan konfigurasi debug dan release, tanpa fake login atau seed history di release.
+- [x] Ubah applicationId ke id.ac.ub.athra; selaraskan namespace, package Kotlin, dan referensi test tanpa merusak launcher.
+- [x] Tetapkan minSdk 26. Verifikasi compileSdk, targetSdk, AGP, Kotlin, JDK, Compose, Navigation, Room, Firebase, dan DataStore saling kompatibel; pin semua versi. Debug assemble berhasil; KSP masih memakai opsi kompatibilitas AGP yang experimental.
+- [x] Tambahkan dependency yang diperlukan melalui version catalog; hindari versi dinamis.
+- [x] Tambahkan konfigurasi Firebase Authentication Email/Password dan Auth Emulator yang hanya aktif di debug dengan flag eksplisit.
+- [x] Tambahkan INTERNET permission hanya untuk autentikasi; pisahkan konfigurasi debug dan release, tanpa fake login atau seed history di release.
 - [ ] Siapkan struktur UI/data/domain sederhana, AppContainer dan factory ViewModel; pertahankan single Activity.
 - [ ] Buat README awal berisi setup Android SDK/JDK, Firebase/Auth Emulator, build, test, pemasangan APK, operasi offline, dan batas penyimpanan lokal.
 
 ## 2. Model domain, penyimpanan, dan katalog
 
-- [ ] Definisikan model akun, profil, exercise, sesi, session exercise, set, status sesi, dan snapshot PR sesuai kontrak PRD.
-- [ ] Implementasikan Room entities, DAO, foreign key, index, constraint, schema export, dan migrasi yang aman.
-- [ ] Implementasikan TypeConverter desimal kanonik menggunakan BigDecimal/string; jangan memakai Float/Double untuk logika beban, volume, PR, atau delta.
+- [x] Definisikan model sesi, exercise, set, status sesi, volume, PR, referensi, dan analytics; model profil serta snapshot database menyusul bersama repository.
+- [x] Implementasikan Room entities, DAO, foreign key, index, constraint, schema export, dan migrasi yang aman. Database versi awal siap; migration untuk versi berikutnya belum diperlukan.
+- [x] Implementasikan TypeConverter desimal kanonik menggunakan BigDecimal/string; jangan memakai Float/Double untuk logika beban, volume, PR, atau delta.
 - [ ] Terapkan repository dengan pemeriksaan UID dan kepemilikan parent pada semua akses data pribadi.
 - [ ] Terapkan satu slot draft per UID, maksimal satu sesi ACTIVE/REVIEW per akun, dan operasi atomik untuk perubahan set, finalisasi, serta discard.
-- [ ] Tambahkan DataStore dengan preferensi unit terpisah per Firebase UID; akun baru memakai kg.
+- [x] Tambahkan DataStore dengan preferensi unit terpisah per Firebase UID; akun baru memakai kg.
 - [ ] Buat seed katalog lokal idempoten berisi 12 exercise pada PRD, ID stabil, kelompok otot, alat, dan petunjuk singkat.
 - [ ] Pastikan draft/history tetap tersedia offline setelah sesi Firebase tersimpan; dokumentasikan bahwa data workout lokal tidak tersinkron antarperangkat.
 
