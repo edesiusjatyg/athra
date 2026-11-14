@@ -19,6 +19,7 @@ import id.ac.ub.athra.ui.screens.ProgressScreen
 import id.ac.ub.athra.ui.screens.HistoryScreen
 import id.ac.ub.athra.ui.screens.WorkoutDetailScreen
 import id.ac.ub.athra.ui.screens.PreferencesScreen
+import id.ac.ub.athra.ui.screens.EditProfileScreen
 import id.ac.ub.athra.ui.screens.AthraBottomNav
 import id.ac.ub.athra.ui.theme.Background
 import androidx.compose.material3.MaterialTheme
@@ -70,14 +71,7 @@ fun AthraNavGraph(
                     workoutState.draft?.let { navController.navigate(Routes.LiveWorkout.route) }
                 },
                 onViewAll = { navController.navigate(Routes.History.route) },
-                onNavigate = { tab ->
-                    when (tab) {
-                        0 -> navController.navigate(Routes.Home.route) { popUpTo(Routes.Home.route) { inclusive = false }; launchSingleTop = true }
-                        1 -> navController.navigate(Routes.PreWorkout.route) { launchSingleTop = true }
-                        2 -> navController.navigate(Routes.Progress.route) { launchSingleTop = true }
-                        3 -> navController.navigate(Routes.Profile.route) { launchSingleTop = true }
-                    }
-                },
+                onNavigate = { tab -> navController.navigateTab(tab) },
             )
             // History is opened from the Home section action and shares the local completed-session stream.
             //
@@ -107,6 +101,7 @@ fun AthraNavGraph(
                 onSaveSet = workoutViewModel::saveSet,
                 onDeleteSet = workoutViewModel::deleteSet,
                 onAddExercise = workoutViewModel::addExercise,
+                onRemoveExercise = workoutViewModel::removeExercise,
                 onFinish = workoutViewModel::finish,
                 onResume = workoutViewModel::resume,
                 onSave = workoutViewModel::save,
@@ -121,14 +116,7 @@ fun AthraNavGraph(
                 analytics = workoutState.analytics,
                 periodDays = periodDays,
                 onPeriodChange = { days -> periodDays = days; workoutViewModel.refreshAnalytics(days) },
-                onNavigate = { tab ->
-                    when (tab) {
-                        0 -> navController.navigate(Routes.Home.route) { popUpTo(Routes.Home.route) { inclusive = false }; launchSingleTop = true }
-                        1 -> navController.navigate(Routes.PreWorkout.route) { launchSingleTop = true }
-                        2 -> Unit
-                        3 -> navController.navigate(Routes.Profile.route) { launchSingleTop = true }
-                    }
-                },
+                onNavigate = { tab -> if (tab != 2) navController.navigateTab(tab) },
             )
         }
         composable(Routes.History.route) {
@@ -140,28 +128,14 @@ fun AthraNavGraph(
                         navController.navigate(Routes.WorkoutDetail.route)
                     }
                 },
-                onNavigate = { tab ->
-                    when (tab) {
-                        0 -> navController.navigate(Routes.Home.route) { launchSingleTop = true }
-                        1 -> navController.navigate(Routes.PreWorkout.route) { launchSingleTop = true }
-                        2 -> navController.navigate(Routes.Progress.route) { launchSingleTop = true }
-                        3 -> navController.navigate(Routes.Profile.route) { launchSingleTop = true }
-                    }
-                },
+                onNavigate = { tab -> navController.navigateTab(tab) },
             )
         }
         composable(Routes.Profile.route) {
             androidx.compose.material3.Scaffold(
                 containerColor = Background,
                 bottomBar = {
-                    AthraBottomNav(selected = 3) { tab ->
-                        when (tab) {
-                            0 -> navController.navigate(Routes.Home.route) { launchSingleTop = true }
-                            1 -> navController.navigate(Routes.PreWorkout.route) { launchSingleTop = true }
-                            2 -> navController.navigate(Routes.Progress.route) { launchSingleTop = true }
-                            3 -> Unit
-                        }
-                    }
+                    AthraBottomNav(selected = 3) { tab -> if (tab != 3) navController.navigateTab(tab) }
                 },
                 topBar = { TopAppBar(title = { Text("Profil") }) },
             ) { insets ->
@@ -169,6 +143,7 @@ fun AthraNavGraph(
                     Text(userName, style = MaterialTheme.typography.headlineMedium)
                     Text(userEmail, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Data latihan tersimpan di perangkat ini.")
+                    TextButton(onClick = { navController.navigate(Routes.EditProfile.route) }) { Text("Edit profil") }
                     TextButton(onClick = { navController.navigate(Routes.Preferences.route) }) { Text("Preferensi satuan") }
                     TextButton(onClick = onSignOut) { Text("Keluar") }
                 }
@@ -184,5 +159,29 @@ fun AthraNavGraph(
                 onSave = { unit -> scope.launch { onSaveUnit(unit); navController.popBackStack() } },
             )
         }
+        composable(Routes.EditProfile.route) {
+            EditProfileScreen(
+                initialName = workoutState.profileName.ifBlank { userName },
+                email = workoutState.profileEmail.ifBlank { userEmail },
+                error = workoutState.error,
+                onBack = { workoutViewModel.refreshProfile(); navController.popBackStack() },
+                onSave = { name -> scope.launch { if (workoutViewModel.updateProfileName(name)) navController.popBackStack() } },
+            )
+        }
+    }
+}
+
+private fun NavHostController.navigateTab(tab: Int) {
+    val route = when (tab) {
+        0 -> Routes.Home.route
+        1 -> Routes.PreWorkout.route
+        2 -> Routes.Progress.route
+        3 -> Routes.Profile.route
+        else -> return
+    }
+    navigate(route) {
+        popUpTo(Routes.Home.route) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }

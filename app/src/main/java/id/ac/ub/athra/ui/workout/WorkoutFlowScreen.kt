@@ -26,9 +26,10 @@ import kotlinx.coroutines.launch
 fun WorkoutFlowScreen(
     draft: WorkoutDraft,
     state: WorkoutUiState,
-    onSaveSet: suspend (String, String, String?, String, String, WeightUnit) -> Unit,
+    onSaveSet: suspend (String, String, String?, String, String, WeightUnit) -> Boolean,
     onDeleteSet: suspend (String, String) -> Unit,
     onAddExercise: suspend (String, String) -> Unit,
+    onRemoveExercise: suspend (String, String) -> Unit,
     onFinish: suspend (String) -> Boolean,
     onResume: suspend (String) -> Unit,
     onSave: suspend (String) -> Boolean,
@@ -46,8 +47,12 @@ fun WorkoutFlowScreen(
     var showLibrary by remember { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf("") }
     var muscleFilter by rememberSaveable { mutableStateOf("Semua") }
+    var pendingMuscleFilter by rememberSaveable { mutableStateOf("Semua") }
     var filterMenu by remember { mutableStateOf(false) }
     var detailExerciseId by remember { mutableStateOf<String?>(null) }
+    var pendingRemove by remember { mutableStateOf<id.ac.ub.athra.domain.model.WorkoutExercise?>(null) }
+    var confirmDiscard by remember { mutableStateOf(false) }
+    var confirmUnsavedFinish by remember { mutableStateOf(false) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(draft.session.startedAt, draft.session.status) {
         while (draft.session.status == SessionStatus.ACTIVE) {
@@ -93,11 +98,14 @@ fun WorkoutFlowScreen(
                 Spacer(Modifier.height(24.dp))
                 Button(onClick = { scope.launch { if (onSave(draft.session.id)) onExit() } }, modifier = Modifier.fillMaxWidth()) { Text("Simpan sesi") }
                 TextButton(onClick = { scope.launch { onResume(draft.session.id) } }) { Text("Kembali memperbaiki") }
-                TextButton(onClick = { scope.launch { onDiscard(draft.session.id); onExit() } }) { Text("Buang sesi") }
+                TextButton(onClick = { confirmDiscard = true }) { Text("Buang sesi") }
             } else {
                 Text("Gerakan", style = MaterialTheme.typography.titleMedium)
                 draft.exercises.forEach { item ->
-                    TextButton(onClick = { exerciseId = item.exercise.id; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null; reps = ""; weight = "" }) { Text(item.exercise.name) }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = { exerciseId = item.exercise.id; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null; reps = ""; weight = "" }) { Text(item.exercise.name) }
+                        TextButton(onClick = { pendingRemove = item }) { Text("Hapus gerakan") }
+                    }
                     item.sets.forEach { set ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             TextButton(onClick = {
@@ -120,7 +128,7 @@ fun WorkoutFlowScreen(
                     Button(onClick = {
                         scope.launch {
                             val unchangedWeight = editingSetId != null && weight == editingOriginalDisplay
-                            onSaveSet(
+                            val saved = onSaveSet(
                                 draft.session.id,
                                 selected.exercise.id,
                                 editingSetId,
@@ -128,14 +136,48 @@ fun WorkoutFlowScreen(
                                 if (unchangedWeight) editingOriginalKg.orEmpty() else weight,
                                 if (unchangedWeight) WeightUnit.KG else weightUnit,
                             )
-                            reps = ""; weight = ""; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null
+                            if (saved) {
+                                reps = ""; weight = ""; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null
+                            }
                         }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (editingSetId == null) "Simpan set" else "Simpan perubahan set") }
+                    val reference = state.exerciseReferences[selected.exercise.id]
+                    Spacer(Modifier.height(12.dp))
+                    Text("Riwayat terakhir", style = MaterialTheme.typography.titleSmall)
+                    if (reference == null) {
+                        Text("Belum ada riwayat untuk gerakan ini.", color = MaterialTheme.colorScheme.secondary)
+                    } else {
+                        reference.sets.forEach { previous ->
+                            Text("Set ${previous.number} · ${previous.reps} repetisi · ${displayNumber(displayWeight(previous.weightKg, weightUnit))} ${weightUnit.name.lowercase()}")
+                        }
+                        selected.sets.forEach { current ->
+                            val previous = reference.sets.firstOrNull { it.number == current.number }
+                            if (previous == null) Text("Set ${current.number}: Tidak ada pembanding")
+                            else {
+                                val weightDelta = displayNumber(displayWeight(current.weightKg.subtract(previous.weightKg), weightUnit))
+                                val weightSign = if (current.weightKg > previous.weightKg) "+" else ""
+                                val repsDelta = current.reps - previous.reps
+                                val repsSign = if (repsDelta > 0) "+" else ""
+                                Text("Set ${current.number}: $weightSign$weightDelta ${weightUnit.name.lowercase()} · $repsSign$repsDelta repetisi")
+                            }
+                        }
+                        if (selected.sets.isNotEmpty()) {
+                            val currentVolume = selected.sets.fold(java.math.BigDecimal.ZERO) { total, set ->
+                                total.add(set.weightKg.multiply(java.math.BigDecimal.valueOf(set.reps.toLong())))
+                            }
+                            val volumeDelta = currentVolume.subtract(reference.volumeKg)
+                            val volumeSign = if (volumeDelta.signum() > 0) "+" else ""
+                            Text("Volume gerakan: ${displayNumber(displayWeight(currentVolume, weightUnit))} ${weightUnit.name.lowercase()} · Δ $volumeSign${displayNumber(displayWeight(volumeDelta, weightUnit))}")
+                        }
+                    }
                 }
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = { scope.launch { onFinish(draft.session.id) } }, modifier = Modifier.fillMaxWidth()) { Text("Selesai dan tinjau") }
-                TextButton(onClick = { scope.launch { onDiscard(draft.session.id); onExit() } }) { Text("Buang sesi") }
+                Button(onClick = {
+                    if (reps.isNotBlank() || weight.isNotBlank()) confirmUnsavedFinish = true
+                    else scope.launch { onFinish(draft.session.id) }
+                }, modifier = Modifier.fillMaxWidth()) { Text("Selesai dan tinjau") }
+                TextButton(onClick = { confirmDiscard = true }) { Text("Buang sesi") }
             }
         }
     }
@@ -151,6 +193,13 @@ fun WorkoutFlowScreen(
                     Text("${detail.primaryMuscleGroup} · ${detail.equipment}", color = MaterialTheme.colorScheme.secondary)
                     Spacer(Modifier.height(12.dp))
                     Text(detail.instructions)
+                    Spacer(Modifier.height(12.dp))
+                    Text("Riwayat terakhir", style = MaterialTheme.typography.titleSmall)
+                    val reference = state.exerciseReferences[detail.id]
+                    if (reference == null) Text("Belum ada riwayat untuk gerakan ini.", color = MaterialTheme.colorScheme.secondary)
+                    else reference.sets.forEach { set ->
+                        Text("Set ${set.number} · ${set.reps} repetisi · ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}")
+                    }
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = {
                         scope.launch { onAddExercise(draft.session.id, detail.id); exerciseId = detail.id; detailExerciseId = null; showLibrary = false }
@@ -160,12 +209,15 @@ fun WorkoutFlowScreen(
             } else Column {
                 OutlinedTextField(search, { search = it }, label = { Text("Cari gerakan") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Box {
-                    TextButton(onClick = { filterMenu = true }) { Text("Kelompok otot: $muscleFilter ▾") }
+                    TextButton(onClick = { pendingMuscleFilter = muscleFilter; filterMenu = true }) { Text("Kelompok otot: $pendingMuscleFilter ▾") }
                     DropdownMenu(expanded = filterMenu, onDismissRequest = { filterMenu = false }) {
                         listOf("Semua", "Back", "Chest", "Legs", "Arms", "Shoulders", "Core").forEach { group ->
-                            DropdownMenuItem(text = { Text(group) }, onClick = { muscleFilter = group; filterMenu = false })
+                            DropdownMenuItem(text = { Text(group) }, onClick = { pendingMuscleFilter = group; filterMenu = false })
                         }
-                        DropdownMenuItem(text = { Text("Reset") }, onClick = { muscleFilter = "Semua"; search = ""; filterMenu = false })
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { pendingMuscleFilter = "Semua" }) { Text("Reset filter") }
+                        TextButton(onClick = { muscleFilter = pendingMuscleFilter }) { Text("Terapkan") }
                     }
                 }
                 val matches = state.catalog.filter { exercise ->
@@ -184,5 +236,47 @@ fun WorkoutFlowScreen(
             }
         },
         confirmButton = { TextButton(onClick = { detailExerciseId = null; showLibrary = false }) { Text("Tutup") } },
+    )
+
+    pendingRemove?.let { item ->
+        AlertDialog(
+            onDismissRequest = { pendingRemove = null },
+            title = { Text("Hapus gerakan?") },
+            text = { Text("${item.exercise.name} dan ${item.sets.size} set-nya akan dihapus dari draft.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        onRemoveExercise(draft.session.id, item.exercise.id)
+                        if (exerciseId == item.exercise.id) { exerciseId = ""; reps = ""; weight = ""; editingSetId = null }
+                        pendingRemove = null
+                    }
+                }) { Text("Hapus") }
+            },
+            dismissButton = { TextButton(onClick = { pendingRemove = null }) { Text("Batal") } },
+        )
+    }
+
+    if (confirmDiscard) AlertDialog(
+        onDismissRequest = { confirmDiscard = false },
+        title = { Text("Buang sesi?") },
+        text = { Text("Sesi dan semua set di dalam draft akan dihapus permanen.") },
+        confirmButton = {
+            TextButton(onClick = { scope.launch { onDiscard(draft.session.id); confirmDiscard = false; onExit() } }) { Text("Buang sesi") }
+        },
+        dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("Lanjutkan latihan") } },
+    )
+
+    if (confirmUnsavedFinish) AlertDialog(
+        onDismissRequest = { confirmUnsavedFinish = false },
+        title = { Text("Input belum disimpan") },
+        text = { Text("Simpan set ini sebelum membuka ringkasan, atau hapus input yang belum tersimpan?") },
+        confirmButton = {
+            TextButton(onClick = {
+                reps = ""; weight = ""; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null
+                confirmUnsavedFinish = false
+                scope.launch { onFinish(draft.session.id) }
+            }) { Text("Hapus input dan tinjau") }
+        },
+        dismissButton = { TextButton(onClick = { confirmUnsavedFinish = false }) { Text("Kembali ke input") } },
     )
 }

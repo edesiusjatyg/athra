@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
                         val navController = rememberNavController()
                         AthraNavGraph(
                             navController = navController,
-                            userName = user.displayName.ifBlank { user.email.substringBefore('@') },
+                            userName = workoutState.profileName.ifBlank { user.displayName.ifBlank { user.email.substringBefore('@') } },
                             workoutState = workoutState,
                             workoutViewModel = workoutViewModel,
                             onStartWorkout = { workoutViewModel.start() },

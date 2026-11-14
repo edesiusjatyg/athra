@@ -149,6 +149,10 @@ fun WorkoutDetailScreen(workout: CompletedWorkout?, weightUnit: WeightUnit, onBa
             val draft = data.draft
             val totals = calculateTotals(draft)
             Text(draft.session.name, style = MaterialTheme.typography.headlineMedium, color = Ink)
+            val durationSeconds = (((draft.session.endedAt ?: draft.session.startedAt) - draft.session.startedAt).coerceAtLeast(0) / 1_000)
+            Text("Durasi %02d:%02d:%02d".format(durationSeconds / 3_600, durationSeconds % 3_600 / 60, durationSeconds % 60), color = Secondary)
+            val completedAt = Instant.ofEpochMilli(draft.session.endedAt ?: draft.session.startedAt).atZone(ZoneId.systemDefault())
+            Text(DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale("id", "ID")).format(completedAt), color = Secondary)
             Text("${totals.setCount} set · ${totals.repCount} repetisi · ${displayNumber(displayWeight(totals.volumeKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Secondary)
             Spacer(Modifier.height(20.dp))
             draft.exercises.forEach { item ->
@@ -191,6 +195,23 @@ fun PreferencesScreen(initialUnit: id.ac.ub.athra.domain.model.WeightUnit, onBac
             Text("Contoh: 32 kg = 70.55 lb", color = Secondary, modifier = Modifier.padding(top = 8.dp))
             Spacer(Modifier.weight(1f))
             Button(onClick = { onSave(selected) }, modifier = Modifier.fillMaxWidth()) { Text("Simpan") }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun EditProfileScreen(initialName: String, email: String, error: String?, onBack: () -> Unit, onSave: (String) -> Unit) {
+    var name by remember(initialName) { mutableStateOf(initialName) }
+    Scaffold(
+        containerColor = Background,
+        topBar = { TopAppBar(title = { Text("Edit profil") }, navigationIcon = { TextButton(onClick = onBack) { Text("Batal") } }) },
+    ) { insets ->
+        Column(Modifier.fillMaxSize().padding(insets).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nama") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = email, onValueChange = {}, label = { Text("Email") }, readOnly = true, singleLine = true, modifier = Modifier.fillMaxWidth())
+            if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
+            Button(onClick = { onSave(name.trim()) }, enabled = name.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Simpan") }
         }
     }
 }
