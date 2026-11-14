@@ -28,7 +28,7 @@ Perintah yang dijalankan pada source saat ini:
 ./gradlew assembleDebug
 ```
 
-Semua perintah compile, unit test, lint, dan debug assemble pada batch terbaru berhasil; 14/14 unit test lulus. Source saat ini memiliki **22 instrumented test** (6 tes Room, 1 constraint, 11 Compose flow smoke, dan 4 auth validation). `adb devices` tidak menampilkan perangkat, jadi 22 tes tersebut belum dieksekusi dan pengukuran rotasi/IME belum diulang. Hasil connected run **12/12** di bagian atas adalah bukti historis pada revisi sebelumnya, bukan hasil untuk source terbaru.
+Semua perintah compile, unit test, lint, dan debug assemble pada batch terbaru berhasil; 14/14 unit test lulus. Source saat ini memiliki **23 instrumented test** (6 tes Room, 1 constraint, 11 Compose flow smoke, 1 end-to-end workout navigation, dan 4 auth validation). Test source lengkap berhasil dikompilasi. `adb devices` tidak menampilkan perangkat, jadi 23 tes tersebut belum dieksekusi dan pengukuran rotasi/IME belum diulang. Hasil connected run **12/12** di bagian atas adalah bukti historis pada revisi sebelumnya, bukan hasil untuk source terbaru.
 
 Metadata Figma memastikan page `ATHRA · Minimal Redesign` ber-ID `29:2`. Permintaan screenshot dan context ditolak karena batas panggilan Figma MCP Starter; review visual dan pencocokan implementasi terhadap page tersebut masih terbuka.
 
