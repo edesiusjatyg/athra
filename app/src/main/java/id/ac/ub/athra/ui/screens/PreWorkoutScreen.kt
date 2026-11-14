@@ -25,6 +25,9 @@ fun PreWorkoutScreen(
     hasDraft: Boolean = false,
     onContinueDraft: () -> Unit = {},
     onDiscardDraft: () -> Unit = {},
+    busy: Boolean = false,
+    error: String? = null,
+    onRetry: () -> Unit = onBeginSession,
 ) {
     var confirmDiscard by remember { mutableStateOf(false) }
     Scaffold(
@@ -44,8 +47,8 @@ fun PreWorkoutScreen(
             if (hasDraft) {
                 Text("Sesi latihan belum selesai", style = MaterialTheme.typography.headlineLarge, color = Ink)
                 Text("Lanjutkan draft yang tersimpan atau buang sebelum membuat sesi baru.", color = Secondary)
-                Button(onClick = onContinueDraft, modifier = Modifier.fillMaxWidth()) { Text("Lanjutkan sesi") }
-                OutlinedButton(onClick = { confirmDiscard = true }, modifier = Modifier.fillMaxWidth()) { Text("Buang draft dan mulai baru") }
+                Button(onClick = onContinueDraft, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Lanjutkan sesi") }
+                OutlinedButton(onClick = { confirmDiscard = true }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Buang draft dan mulai baru") }
             } else {
                 Text("Siap berlatih?", style = MaterialTheme.typography.headlineLarge, color = Ink)
                 Text("Sesi mulai dicatat saat kamu memilih salah satu aksi.", color = Secondary)
@@ -53,11 +56,15 @@ fun PreWorkoutScreen(
                     Text("Mulai workout", style = MaterialTheme.typography.titleLarge, color = Ink)
                     Text("Buat sesi baru, lalu tambahkan gerakan dan set.", color = Secondary)
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = onBeginSession, modifier = Modifier.fillMaxWidth()) { Text("Mulai workout") }
+                    Button(onClick = onBeginSession, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Mulai workout") }
                 }
-                OutlinedButton(onClick = onQuickStart, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                OutlinedButton(onClick = onQuickStart, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("Mulai cepat")
                 }
+            }
+            error?.let {
+                Text(it, color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = onRetry, enabled = !busy) { Text("Coba lagi") }
             }
         }
     }

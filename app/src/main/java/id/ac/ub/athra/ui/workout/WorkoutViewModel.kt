@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.sync.Mutex
 import java.util.concurrent.atomic.AtomicLong
 import java.time.ZoneId
 
@@ -49,6 +50,7 @@ class WorkoutViewModel(
     val state = mutableState.asStateFlow()
     private val analyticsRequest = AtomicLong()
     private var analyticsJob: Job? = null
+    private val mutationMutex = Mutex()
 
     init {
         viewModelScope.launch {
@@ -109,14 +111,19 @@ class WorkoutViewModel(
     }
 
     suspend fun updateProfileName(name: String): Boolean = withContext(Dispatchers.IO) {
-        runCatching { repository.updateProfileName(userId, name); repository.getProfile(userId) }
-            .fold(
-                onSuccess = { profile ->
-                    if (profile != null) mutableState.value = mutableState.value.copy(profileName = profile.displayName, profileEmail = profile.email, error = null)
-                    true
-                },
-                onFailure = { fail(it); false },
-            )
+        if (!beginMutation()) return@withContext false
+        try {
+            runCatching { repository.updateProfileName(userId, name); repository.getProfile(userId) }
+                .fold(
+                    onSuccess = { profile ->
+                        if (profile != null) mutableState.value = mutableState.value.copy(profileName = profile.displayName, profileEmail = profile.email, error = null)
+                        true
+                    },
+                    onFailure = { fail(it); false },
+                )
+        } finally {
+            endMutation()
+        }
     }
 
     suspend fun loadWorkoutDetail(sessionId: String): CompletedWorkout? = withContext(Dispatchers.IO) {
@@ -124,10 +131,15 @@ class WorkoutViewModel(
     }
 
     suspend fun start(name: String? = null): String? = withContext(Dispatchers.IO) {
-        runCatching { repository.startOrResume(userId, name, clock.nowMillis()) }
-            .onSuccess { mutableState.value = mutableState.value.copy(draft = it, error = null) }
-            .onFailure { fail(it) }
-            .getOrNull()?.session?.id
+        if (!beginMutation()) return@withContext null
+        try {
+            runCatching { repository.startOrResume(userId, name, clock.nowMillis()) }
+                .onSuccess { mutableState.value = mutableState.value.copy(draft = it, error = null) }
+                .onFailure { fail(it) }
+                .getOrNull()?.session?.id
+        } finally {
+            endMutation()
+        }
     }
 
     suspend fun addExercise(sessionId: String, exerciseId: String) = mutate {
@@ -150,11 +162,16 @@ class WorkoutViewModel(
     }
 
     suspend fun finish(sessionId: String): Boolean = withContext(Dispatchers.IO) {
-        runCatching {
-            val draft = repository.enterReview(userId, sessionId, clock.nowMillis())
-            val records = repository.previewRecords(userId, draft)
-            mutableState.value = mutableState.value.copy(draft = draft, personalRecords = records, error = null)
-        }.fold(onSuccess = { true }, onFailure = { fail(it); false })
+        if (!beginMutation()) return@withContext false
+        try {
+            runCatching {
+                val draft = repository.enterReview(userId, sessionId, clock.nowMillis())
+                val records = repository.previewRecords(userId, draft)
+                mutableState.value = mutableState.value.copy(draft = draft, personalRecords = records, error = null)
+            }.fold(onSuccess = { true }, onFailure = { fail(it); false })
+        } finally {
+            endMutation()
+        }
     }
 
     suspend fun resume(sessionId: String) = mutate { repository.resume(userId, sessionId) }
@@ -173,21 +190,41 @@ class WorkoutViewModel(
     }
 
     private suspend fun mutate(block: suspend () -> WorkoutDraft?): Unit = withContext(Dispatchers.IO) {
-        runCatching { block() }
-            .onSuccess { draft -> mutableState.value = mutableState.value.copy(draft = draft, error = null) }
-            .onFailure { fail(it) }
-        Unit
+        if (!beginMutation()) return@withContext Unit
+        try {
+            runCatching { block() }
+                .onSuccess { draft -> mutableState.value = mutableState.value.copy(draft = draft, error = null) }
+                .onFailure { fail(it) }
+        } finally {
+            endMutation()
+        }
     }
 
     private suspend fun mutateResult(block: suspend () -> Any?): Boolean = withContext(Dispatchers.IO) {
-        runCatching {
-            val result = block()
-            val draft = repository.getDraft(userId)
-            result to draft
-        }.fold(
-            onSuccess = { (_, draft) -> mutableState.value = mutableState.value.copy(draft = draft, error = null); true },
-            onFailure = { fail(it); false },
-        )
+        if (!beginMutation()) return@withContext false
+        try {
+            runCatching {
+                val result = block()
+                val draft = repository.getDraft(userId)
+                result to draft
+            }.fold(
+                onSuccess = { (_, draft) -> mutableState.value = mutableState.value.copy(draft = draft, error = null); true },
+                onFailure = { fail(it); false },
+            )
+        } finally {
+            endMutation()
+        }
+    }
+
+    private fun beginMutation(): Boolean {
+        if (!mutationMutex.tryLock()) return false
+        mutableState.value = mutableState.value.copy(busy = true, error = null)
+        return true
+    }
+
+    private fun endMutation() {
+        mutableState.value = mutableState.value.copy(busy = false)
+        mutationMutex.unlock()
     }
 
     private fun fail(error: Throwable) {

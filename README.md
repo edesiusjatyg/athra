@@ -23,19 +23,20 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Firebase Auth Emulator
 
-Jalankan emulator pada komputer pengembangan:
+Jalankan Auth Emulator pada komputer pengembangan:
 
 ```sh
 firebase emulators:start --only auth --project demo-athra
 ```
 
-Untuk Android Emulator, host default `10.0.2.2` mengarah ke komputer host. Build debug mengaktifkan emulator secara eksplisit:
+Untuk Android Emulator yang memakai Firebase CLI dengan bind lokal, teruskan port emulator ke device dan build debug dengan host loopback:
 
 ```sh
-./gradlew :app:assembleDebug -Pathra.authEmulator=true
+adb reverse tcp:9099 tcp:9099
+./gradlew :app:assembleDebug -Pathra.authEmulator=true -Pathra.authEmulatorHost=127.0.0.1
 ```
 
-Untuk perangkat fisik, berikan alamat LAN komputer yang menjalankan emulator:
+Host default `10.0.2.2` dapat dipakai bila Auth Emulator menerima koneksi dari jaringan emulator. Untuk perangkat fisik, berikan alamat LAN komputer yang menjalankan emulator dan pastikan port 9099 dapat dijangkau:
 
 ```sh
 ./gradlew :app:assembleDebug -Pathra.authEmulator=true -Pathra.authEmulatorHost=192.168.1.10
@@ -63,4 +64,4 @@ Setelah akun terautentikasi, katalog, profil lokal, sesi, set, riwayat, PR, anal
 
 ## Status verifikasi
 
-Lihat [TODO.md](TODO.md) untuk item implementasi, [PRD.md](PRD.md) untuk acceptance criteria, dan [VERIFICATION.md](VERIFICATION.md) untuk hasil build/test serta status AC. Build lokal terbaru meluluskan 14 unit test, lint, debug/release assemble, dan kompilasi instrumented test. Run emulator sebelumnya meluluskan 10/10 tes dan mengukur fixture analytics 10.000 set dalam 148 ms; tes H1/H2 baru ditambahkan setelah run itu dan belum dijalankan karena emulator sedang mati. Screenshot runtime Home, Library, dan Summary ada di `screenshots/runtime/`. Verifikasi connected terbaru, offline, rotasi, pemulihan process death, serta beberapa acceptance UI masih terbuka. Query analytics dan referensi memakai query Room terkelompok untuk menghindari pemuatan N+1.
+Lihat [TODO.md](TODO.md) untuk item implementasi, [PRD.md](PRD.md) untuk acceptance criteria, dan [VERIFICATION.md](VERIFICATION.md) untuk hasil build/test serta status AC. Build dan suite emulator terbaru meluluskan 14/14 unit test, 12/12 instrumented test, lint, serta debug/release assemble. Benchmark query/kalkulasi Room pada fixture 10.000 set: 147 ms di Medium_Phone AVD API 37. Screenshot runtime Home H1/H2/H3, Library, Summary, PR, referensi, Progress, dan validasi ada di `screenshots/runtime/`. Auth Emulator, alur H1/H2 → H3, simpan offline, dan pemulihan draft setelah force-stop telah dicoba manual; rotasi, pergantian akun, keyboard software pada font 200%, dan beberapa acceptance UI masih terbuka. Query analytics dan referensi memakai query Room terkelompok untuk menghindari pemuatan N+1.

@@ -1,18 +1,28 @@
 package id.ac.ub.athra.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import id.ac.ub.athra.domain.model.Exercise
 import id.ac.ub.athra.domain.model.SessionStatus
 import id.ac.ub.athra.domain.model.WeightUnit
 import id.ac.ub.athra.domain.model.WorkoutSession
+import id.ac.ub.athra.domain.model.WorkoutDraft
+import id.ac.ub.athra.domain.model.WorkoutExercise
 import id.ac.ub.athra.ui.auth.AuthScreen
 import id.ac.ub.athra.ui.auth.AuthUiState
 import id.ac.ub.athra.ui.screens.HistoryScreen
 import id.ac.ub.athra.ui.screens.PreferencesScreen
 import id.ac.ub.athra.ui.screens.ProgressScreen
 import id.ac.ub.athra.ui.screens.PreWorkoutScreen
+import id.ac.ub.athra.ui.workout.WorkoutFlowScreen
+import id.ac.ub.athra.ui.workout.WorkoutUiState
+import kotlinx.coroutines.CompletableDeferred
+import java.util.concurrent.atomic.AtomicInteger
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -85,5 +95,45 @@ class FlowSmokeTest {
         assertTrue(savedUnit == null)
         compose.onNodeWithText("Simpan").performClick()
         assertTrue(savedUnit == WeightUnit.LB)
+    }
+
+    @Test
+    fun rapidSaveSetTapsKeepOnlyOneSubmissionInFlight() {
+        val exercise = Exercise("bench_press", "Bench Press", "Chest", "Barbell", "")
+        val draft = WorkoutDraft(
+            WorkoutSession("session-1", "user-1", "Workout", 1_000L, null, SessionStatus.ACTIVE),
+            listOf(WorkoutExercise(exercise, 0, emptyList())),
+        )
+        val pendingSave = CompletableDeferred<Boolean>()
+        val saveCalls = AtomicInteger()
+        compose.setContent {
+            WorkoutFlowScreen(
+                draft = draft,
+                state = WorkoutUiState(draft = draft, catalog = listOf(exercise)),
+                onSaveSet = { _, _, _, _, _, _ ->
+                    saveCalls.incrementAndGet()
+                    pendingSave.await()
+                },
+                onDeleteSet = { _, _ -> },
+                onAddExercise = { _, _ -> },
+                onRemoveExercise = { _, _ -> },
+                onFinish = { true },
+                onResume = {},
+                onSave = { true },
+                onDiscard = {},
+                onExit = {},
+            )
+        }
+
+        compose.onNodeWithText("Repetisi").performTextInput("10")
+        compose.onNodeWithText("Beban (kg)").performTextInput("32")
+        compose.onNodeWithText("Simpan set").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Simpan set").assertIsNotEnabled()
+        compose.runOnIdle { assertEquals(1, saveCalls.get()) }
+
+        pendingSave.complete(true)
+        compose.waitForIdle()
+        compose.onNodeWithText("Simpan set").assertIsDisplayed()
     }
 }

@@ -64,6 +64,7 @@ fun WorkoutFlowScreen(
     var pendingRemove by remember { mutableStateOf<id.ac.ub.athra.domain.model.WorkoutExercise?>(null) }
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmUnsavedFinish by remember { mutableStateOf(false) }
+    var savingSet by remember(draft.session.id) { mutableStateOf(false) }
     var now by remember { mutableLongStateOf(clock.nowMillis()) }
     LaunchedEffect(draft.session.startedAt, draft.session.status) {
         while (draft.session.status == SessionStatus.ACTIVE) {
@@ -107,31 +108,40 @@ fun WorkoutFlowScreen(
                 }
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(24.dp))
-                Button(onClick = { scope.launch { if (onSave(draft.session.id)) onExit() } }, modifier = Modifier.fillMaxWidth()) { Text("Simpan sesi") }
-                TextButton(onClick = { scope.launch { onResume(draft.session.id) } }) { Text("Kembali memperbaiki") }
-                TextButton(onClick = { confirmDiscard = true }) { Text("Buang sesi") }
+                Button(onClick = { scope.launch { if (onSave(draft.session.id)) onExit() } }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Simpan sesi") }
+                TextButton(onClick = { scope.launch { onResume(draft.session.id) } }, enabled = !state.busy) { Text("Kembali memperbaiki") }
+                TextButton(onClick = { confirmDiscard = true }, enabled = !state.busy) { Text("Buang sesi") }
             } else {
                 Text("Gerakan", style = MaterialTheme.typography.titleMedium)
                 draft.exercises.forEach { item ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = { exerciseId = item.exercise.id; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null; reps = ""; weight = "" }) { Text(item.exercise.name) }
-                        TextButton(onClick = { pendingRemove = item }) { Text("Hapus gerakan") }
+                        TextButton(
+                            onClick = { exerciseId = item.exercise.id; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null; reps = ""; weight = "" },
+                            enabled = !state.busy,
+                        ) { Text(item.exercise.name) }
+                        TextButton(onClick = { pendingRemove = item }, enabled = !state.busy) { Text("Hapus gerakan") }
                     }
                     item.sets.forEach { set ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            TextButton(onClick = {
-                                exerciseId = item.exercise.id
-                                editingSetId = set.id
-                                reps = set.reps.toString()
-                                weight = displayWeight(set.weightKg, weightUnit).stripTrailingZeros().toPlainString()
-                                editingOriginalDisplay = weight
-                                editingOriginalKg = set.weightKg.stripTrailingZeros().toPlainString()
-                            }) { Text("${set.number}.  ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()} × ${set.reps}") }
-                        TextButton(onClick = { scope.launch { onDeleteSet(draft.session.id, set.id); if (editingSetId == set.id) { editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null } } }) { Text("Hapus") }
+                            TextButton(
+                                onClick = {
+                                    exerciseId = item.exercise.id
+                                    editingSetId = set.id
+                                    reps = set.reps.toString()
+                                    weight = displayWeight(set.weightKg, weightUnit).stripTrailingZeros().toPlainString()
+                                    editingOriginalDisplay = weight
+                                    editingOriginalKg = set.weightKg.stripTrailingZeros().toPlainString()
+                                },
+                                enabled = !state.busy,
+                            ) { Text("${set.number}.  ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()} × ${set.reps}") }
+                            TextButton(
+                                onClick = { scope.launch { onDeleteSet(draft.session.id, set.id); if (editingSetId == set.id) { editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null } } },
+                                enabled = !state.busy,
+                            ) { Text("Hapus") }
                         }
                     }
                 }
-                TextButton(onClick = { showLibrary = true }) { Text("+ Tambah gerakan") }
+                TextButton(onClick = { showLibrary = true }, enabled = !state.busy) { Text("+ Tambah gerakan") }
                 if (selected != null) {
                     Text("Catat set · ${selected.exercise.name}", style = MaterialTheme.typography.titleMedium)
                     OutlinedTextField(
@@ -151,22 +161,32 @@ fun WorkoutFlowScreen(
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Button(onClick = {
-                        scope.launch {
-                            val unchangedWeight = editingSetId != null && weight == editingOriginalDisplay
-                            val saved = onSaveSet(
-                                draft.session.id,
-                                selected.exercise.id,
-                                editingSetId,
-                                reps,
-                                if (unchangedWeight) editingOriginalKg.orEmpty() else weight,
-                                if (unchangedWeight) WeightUnit.KG else weightUnit,
-                            )
-                            if (saved) {
-                                reps = ""; weight = ""; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null
+                    Button(
+                        onClick = {
+                            if (savingSet || state.busy) return@Button
+                            savingSet = true
+                            scope.launch {
+                                try {
+                                    val unchangedWeight = editingSetId != null && weight == editingOriginalDisplay
+                                    val saved = onSaveSet(
+                                        draft.session.id,
+                                        selected.exercise.id,
+                                        editingSetId,
+                                        reps,
+                                        if (unchangedWeight) editingOriginalKg.orEmpty() else weight,
+                                        if (unchangedWeight) WeightUnit.KG else weightUnit,
+                                    )
+                                    if (saved) {
+                                        reps = ""; weight = ""; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null
+                                    }
+                                } finally {
+                                    savingSet = false
+                                }
                             }
-                        }
-                }, modifier = Modifier.fillMaxWidth()) { Text(if (editingSetId == null) "Simpan set" else "Simpan perubahan set") }
+                        },
+                        enabled = !state.busy && !savingSet,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(if (editingSetId == null) "Simpan set" else "Simpan perubahan set") }
                     val reference = state.exerciseReferences[selected.exercise.id]
                     Spacer(Modifier.height(12.dp))
                     Text("Riwayat terakhir", style = MaterialTheme.typography.titleSmall)
@@ -205,8 +225,8 @@ fun WorkoutFlowScreen(
                 Button(onClick = {
                     if (reps.isNotBlank() || weight.isNotBlank()) confirmUnsavedFinish = true
                     else scope.launch { onFinish(draft.session.id) }
-                }, modifier = Modifier.fillMaxWidth()) { Text("Selesai dan tinjau") }
-                TextButton(onClick = { confirmDiscard = true }) { Text("Buang sesi") }
+                }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Selesai dan tinjau") }
+                TextButton(onClick = { confirmDiscard = true }, enabled = !state.busy) { Text("Buang sesi") }
             }
         }
     }

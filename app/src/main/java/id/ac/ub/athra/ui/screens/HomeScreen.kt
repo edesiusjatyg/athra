@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -211,7 +212,13 @@ private fun NextWorkoutCard(hasDraft: Boolean, onStartWorkout: () -> Unit) {
 @Composable
 private fun ThisWeekSection(analytics: AnalyticsSummary?, weightUnit: WeightUnit) {
     Column {
-        Row(
+        val stackHeader = LocalDensity.current.fontScale >= 1.5f
+        if (stackHeader) {
+            Column {
+                Text("Minggu ini", style = MaterialTheme.typography.headlineSmall.copy(color = Ink))
+                Text("Sesi, set, dan volume", style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
+            }
+        } else Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -220,10 +227,7 @@ private fun ThisWeekSection(analytics: AnalyticsSummary?, weightUnit: WeightUnit
                 text = "Minggu ini",
                 style = MaterialTheme.typography.headlineSmall.copy(color = Ink),
             )
-            Text(
-                text = "Sesi, set, dan volume",
-                style = MaterialTheme.typography.labelSmall.copy(color = Secondary),
-            )
+            Text("Sesi, set, dan volume", style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
         }
         Spacer(Modifier.height(12.dp))
         Row(

@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 data class AuthUiState(
@@ -27,6 +29,7 @@ class AuthViewModel(
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(AuthUiState())
     val state = mutableState.asStateFlow()
+    private val profileSetupMutex = Mutex()
 
     init {
         viewModelScope.launch {
@@ -35,15 +38,26 @@ class AuthViewModel(
                     mutableState.value = AuthUiState(restoring = false)
                 } else {
                     mutableState.value = AuthUiState(restoring = true, user = user)
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            workoutRepository.ensureProfile(user.uid, user.displayName, user.email)
-                            workoutRepository.seedCatalog()
+                    try {
+                        val resolvedUser = profileSetupMutex.withLock {
+                            withContext(Dispatchers.IO) {
+                                val fallbackName = user.displayName.ifBlank { user.email.substringBefore('@') }
+                                workoutRepository.ensureProfile(user.uid, fallbackName, user.email)
+                                workoutRepository.seedCatalog()
+                                val profile = workoutRepository.getProfile(user.uid)
+                                user.copy(displayName = profile?.displayName?.ifBlank { fallbackName } ?: fallbackName)
+                            }
                         }
-                    }.fold(
-                        onSuccess = { mutableState.value = AuthUiState(restoring = false, user = user) },
-                        onFailure = { error -> mutableState.value = AuthUiState(restoring = false, user = user, error = error.message ?: "Data lokal gagal dimuat.") },
-                    )
+                        mutableState.value = AuthUiState(restoring = false, user = resolvedUser)
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        mutableState.value = AuthUiState(
+                            restoring = false,
+                            user = user,
+                            error = error.message ?: "Data lokal gagal dimuat.",
+                        )
+                    }
                 }
             }
         }
@@ -63,9 +77,17 @@ class AuthViewModel(
         }
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(busy = true, error = null)
-            runCatching { authRepository.signIn(cleanEmail, password) }
-                .onFailure { mutableState.value = mutableState.value.copy(error = it.message ?: "Gagal masuk. Periksa koneksi lalu coba lagi.") }
-            mutableState.value = mutableState.value.copy(busy = false)
+            try {
+                authRepository.signIn(cleanEmail, password)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                mutableState.value = mutableState.value.copy(
+                    error = error.message ?: "Gagal masuk. Periksa koneksi lalu coba lagi.",
+                )
+            } finally {
+                mutableState.value = mutableState.value.copy(busy = false)
+            }
         }
     }
 
@@ -86,14 +108,30 @@ class AuthViewModel(
         }
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(busy = true, error = null)
-            runCatching {
-                val user = authRepository.signUp(cleanName, cleanEmail, password)
-                withContext(Dispatchers.IO) {
-                    workoutRepository.ensureProfile(user.uid, cleanName, cleanEmail)
-                    workoutRepository.seedCatalog()
+            var createdUser: AuthUser? = null
+            try {
+                val user = profileSetupMutex.withLock {
+                    val created = authRepository.signUp(cleanName, cleanEmail, password).copy(displayName = cleanName)
+                    createdUser = created
+                    withContext(Dispatchers.IO) {
+                        workoutRepository.ensureProfile(created.uid, cleanName, cleanEmail)
+                        workoutRepository.updateProfileName(created.uid, cleanName)
+                        workoutRepository.seedCatalog()
+                    }
+                    created
                 }
-            }.onFailure { mutableState.value = mutableState.value.copy(error = it.message ?: "Pendaftaran gagal. Coba lagi.") }
-            mutableState.value = mutableState.value.copy(busy = false)
+                mutableState.value = AuthUiState(restoring = false, user = user)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                mutableState.value = mutableState.value.copy(
+                    restoring = false,
+                    user = createdUser ?: mutableState.value.user,
+                    error = error.message ?: "Pendaftaran gagal. Coba lagi.",
+                )
+            } finally {
+                mutableState.value = mutableState.value.copy(busy = false)
+            }
         }
     }
 
@@ -105,15 +143,28 @@ class AuthViewModel(
         val user = mutableState.value.user ?: return
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(restoring = true, error = null)
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    workoutRepository.ensureProfile(user.uid, user.displayName, user.email)
-                    workoutRepository.seedCatalog()
+            try {
+                val resolvedUser = profileSetupMutex.withLock {
+                    withContext(Dispatchers.IO) {
+                        val fallbackName = user.displayName.ifBlank { user.email.substringBefore('@') }
+                        workoutRepository.ensureProfile(user.uid, fallbackName, user.email)
+                        if (workoutRepository.getProfile(user.uid)?.displayName.isNullOrBlank()) {
+                            workoutRepository.updateProfileName(user.uid, fallbackName)
+                        }
+                        workoutRepository.seedCatalog()
+                        val profile = workoutRepository.getProfile(user.uid)
+                        user.copy(displayName = profile?.displayName?.ifBlank { fallbackName } ?: fallbackName)
+                    }
                 }
-            }.fold(
-                onSuccess = { mutableState.value = mutableState.value.copy(restoring = false, error = null) },
-                onFailure = { mutableState.value = mutableState.value.copy(restoring = false, error = it.message ?: "Data lokal gagal dimuat.") },
-            )
+                mutableState.value = AuthUiState(restoring = false, user = resolvedUser)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                mutableState.value = mutableState.value.copy(
+                    restoring = false,
+                    error = error.message ?: "Data lokal gagal dimuat.",
+                )
+            }
         }
     }
 

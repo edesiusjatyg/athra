@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -113,24 +114,25 @@ fun SectionHeader(
     action: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
-    Row(
+    val stackHeader = LocalDensity.current.fontScale >= 1.5f
+    if (stackHeader) {
+        Column(Modifier.fillMaxWidth()) {
+            Text(title, style = MaterialTheme.typography.headlineSmall.copy(color = Ink))
+            if (action != null && onAction != null) {
+                androidx.compose.material3.TextButton(onClick = onAction, modifier = Modifier.align(Alignment.End)) {
+                    Text(action, style = MaterialTheme.typography.bodyMedium.copy(color = Accent, fontWeight = FontWeight.Medium))
+                }
+            }
+        }
+    } else Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall.copy(color = Ink),
-        )
+        Text(title, style = MaterialTheme.typography.headlineSmall.copy(color = Ink))
         if (action != null && onAction != null) {
             androidx.compose.material3.TextButton(onClick = onAction) {
-                Text(
-                    text = action,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Accent,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                )
+                Text(action, style = MaterialTheme.typography.bodyMedium.copy(color = Accent, fontWeight = FontWeight.Medium))
             }
         }
     }

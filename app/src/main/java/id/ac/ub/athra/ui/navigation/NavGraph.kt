@@ -110,6 +110,9 @@ fun AthraNavGraph(
                 val graphState by graphViewModel.state.collectAsStateWithLifecycle()
                 PreWorkoutScreen(
                     hasDraft = graphState.draft != null,
+                    busy = graphState.busy,
+                    error = graphState.error,
+                    onRetry = { scope.launch { graphViewModel.start() } },
                     onBack = { navController.popBackStack() },
                     onBeginSession = {
                         scope.launch {
