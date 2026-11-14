@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.NavHostController
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -71,7 +72,7 @@ fun AthraNavGraph(
                 draft = workoutState.draft,
                 recentSessions = workoutState.recentSessions,
                 analytics = workoutState.homeAnalytics,
-                onStartWorkout = { navController.navigate(Routes.PreWorkout.route) },
+                onStartWorkout = { navController.navigate(Routes.WorkoutGraph.route) },
                 onResumeWorkout = {
                     onResumeWorkout()
                     workoutState.draft?.let { navController.navigate(Routes.LiveWorkout.route) }
@@ -84,6 +85,7 @@ fun AthraNavGraph(
             // History is opened from the Home section action and shares the local completed-session stream.
             //
         }
+        navigation(startDestination = Routes.PreWorkout.route, route = Routes.WorkoutGraph.route) {
         composable(Routes.PreWorkout.route) {
             PreWorkoutScreen(
                 hasDraft = workoutState.draft != null,
@@ -128,6 +130,7 @@ fun AthraNavGraph(
                 onExit = { navController.popBackStack(Routes.Home.route, false) },
                 weightUnit = weightUnit,
             )
+        }
         }
         composable(Routes.Progress.route) {
             LaunchedEffect(Unit) { workoutViewModel.refreshAnalytics(periodDays) }
@@ -189,7 +192,7 @@ fun AthraNavGraph(
 private fun NavHostController.navigateTab(tab: Int) {
     val route = when (tab) {
         0 -> Routes.Home.route
-        1 -> Routes.PreWorkout.route
+        1 -> Routes.WorkoutGraph.route
         2 -> Routes.Progress.route
         3 -> Routes.Profile.route
         else -> return

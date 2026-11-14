@@ -165,6 +165,9 @@ interface WorkoutDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSet(set: WorkoutSetEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSets(sets: List<WorkoutSetEntity>)
+
     @Query("DELETE FROM workout_sets WHERE setId = :setId")
     suspend fun deleteSet(setId: String)
 

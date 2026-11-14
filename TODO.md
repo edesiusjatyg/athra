@@ -56,11 +56,11 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 ## 4. Navigasi dan fondasi state UI
 
 - [x] Buat Main graph dengan root Home, Train, Progress, Profile dan bottom navigation yang benar-benar berpindah tab tanpa menggandakan destination.
-- [ ] Buat workout graph untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary.
+- [ ] Buat workout graph untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. (Nested graph Start/Active sudah ada; Library/Filters/Detail masih berupa dialog di Active, Summary memakai status REVIEW pada layar sama.)
 - [x] Tambahkan route History, Workout Detail, Edit Profile, dan Preferences; validasi UID saat membuka detail lewat ID route.
 - [ ] Scope satu WorkoutViewModel ke workout graph agar Library, Active, dan Summary membaca sesi yang sama.
 - [ ] Gunakan unidirectional data flow, StateFlow, state hoisting, lifecycle-aware collection, serta SavedStateHandle untuk state layar/input sementara yang sesuai.
-- [ ] Pertahankan asal navigasi Exercise Details agar Back kembali ke Library atau Active yang benar.
+- [x] Pertahankan asal navigasi Exercise Details agar Back kembali ke Library atau Active yang benar. Detail gerakan berada dalam dialog bertingkat di Active dan Back mengembalikan katalog.
 - [x] Terapkan Back sesuai state workout: jangan pernah membuang sesi tanpa konfirmasi; Active dapat tetap latihan, kembali dengan draft, atau buang sesi.
 
 ## 5. Workout end-to-end
@@ -115,12 +115,12 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 ## 9. Verifikasi dan handoff
 
 - [x] Ganti tes template dengan unit test domain untuk parsing, volume, konversi, periode 7/30/90, PR, referensi, dan aturan pembulatan.
-- [ ] Tambahkan integration test Room untuk transaksi, constraint, migrasi, recovery, idempotensi, dan isolasi UID. (Tes in-memory mencakup constraint, finalisasi, snapshot, retry idempoten, isolasi UID, resume, renumber, serta discard; tes migrasi/recovery belum dibuat. Semua belum berjalan tanpa perangkat.)
+- [ ] Tambahkan integration test Room untuk transaksi, constraint, migrasi, recovery, idempotensi, dan isolasi UID. (Tes in-memory mencakup constraint, finalisasi, snapshot, retry idempoten, isolasi UID, resume, renumber, discard, dan fixture analytics 10.000 set; tes migrasi/recovery belum dibuat. Semua belum berjalan tanpa perangkat.)
 - [ ] Tambahkan Compose/instrumented test untuk alur auth, workout, Summary, History, Analytics, Profile, dan Preferences. (Lima Compose smoke test mencakup auth, lanjutkan draft, periode analytics, pembukaan riwayat, dan penyimpanan unit; Profile/Edit Profile, Summary, dan alur set belum dites.)
 - [ ] Penuhi acceptance criteria AC01–AC42 pada PRD; tambahkan kasus REVIEW setelah process death, pergantian akun saat query berjalan, batas periode 30/90 hari, dan sesi lintas tengah malam.
 - [x] Jalankan dan catat hasil aktual: ./gradlew testDebugUnitTest lintDebug assembleDebug. Ketiganya lulus pada 14 Nov 2026.
-- [ ] Jalankan connectedDebugAndroidTest pada emulator/perangkat dengan Auth Emulator bila diperlukan; catat tes yang tidak dapat dijalankan beserta alasannya. (Empat tes instrumented berhasil dikompilasi; task dijalankan dan gagal dengan `No connected devices!`, sesuai `adb devices -l`.)
-- [ ] Ukur Analytics pada fixture 10.000 set dan catat perangkat serta waktu aktual terhadap target 2 detik.
+- [ ] Jalankan connectedDebugAndroidTest pada emulator/perangkat dengan Auth Emulator bila diperlukan; catat tes yang tidak dapat dijalankan beserta alasannya. (Sepuluh tes Android berhasil dikompilasi; task dijalankan dan gagal dengan `No connected devices!`, sesuai `adb devices -l`.)
+- [ ] Ukur Analytics pada fixture 10.000 set dan catat perangkat serta waktu aktual terhadap target 2 detik. (Tes benchmark dan log waktu ditambahkan; belum dapat dijalankan tanpa emulator.)
 - [ ] Pasang dan jalankan APK pada emulator/perangkat; verifikasi alur demo, kondisi offline, rotasi, dan state yang dipulihkan.
 - [ ] Siapkan fixture debug H1/H2 yang dapat di-reset dan tidak aktif di production; buat H3 lewat UI saat demo.
 - [ ] Simpan screenshot runtime nyata untuk alur utama, PR, referensi, analytics, dan validasi.

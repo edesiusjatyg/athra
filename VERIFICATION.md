@@ -10,11 +10,11 @@ Perintah dijalankan dengan cache Gradle/Android diarahkan ke `/tmp` dan compiler
 GRADLE_USER_HOME=/tmp/athra-gradle ANDROID_USER_HOME=/tmp/athra-android ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:compileDebugAndroidTestKotlin --no-configuration-cache --console=plain -Pkotlin.compiler.execution.strategy=in-process
 ```
 
-Hasil terakhir: **BUILD SUCCESSFUL**. Tiga belas unit test domain lulus, lint lulus pada pemeriksaan terakhir, APK debug berhasil dibuat, dan sembilan test Android (empat integration Room + lima Compose smoke test) berhasil dikompilasi. Lint melaporkan warning dependency versi lebih baru, satu saran modifier Compose, label Activity redundan, serta resource template yang tidak dipakai; tidak ada lint error.
+Hasil terakhir: **BUILD SUCCESSFUL**. Tiga belas unit test domain lulus, lint lulus pada pemeriksaan terakhir, APK debug berhasil dibuat, dan sepuluh test Android (lima integration Room termasuk benchmark 10.000 set + lima Compose smoke test) berhasil dikompilasi. Lint melaporkan warning dependency versi lebih baru, satu saran modifier Compose, label Activity redundan, serta resource template yang tidak dipakai; tidak ada lint error.
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
-Instrumented test dijalankan melalui `:app:connectedDebugAndroidTest`, tetapi task berhenti dengan `DeviceException: No connected devices!`. `adb devices -l` juga tidak menampilkan emulator atau perangkat. AVD terpasang tidak dapat diboot karena snapshot lock lama; AVD sementara juga tidak dapat membuat data partition, membutuhkan 7.37 GB sementara ruang `/tmp` yang tersedia 3.4 GB. Karena itu kesembilan test Android belum dieksekusi.
+Instrumented test dijalankan melalui `:app:connectedDebugAndroidTest`, tetapi task berhenti dengan `DeviceException: No connected devices!`. `adb devices -l` juga tidak menampilkan emulator atau perangkat. AVD terpasang tidak dapat diboot karena snapshot lock lama; AVD sementara juga tidak dapat membuat data partition, membutuhkan 7.37 GB sementara ruang `/tmp` yang tersedia 3.4 GB. Karena itu kesepuluh test Android belum dieksekusi. Test benchmark akan mencatat `elapsedMs` dan menguji target 2 detik setelah dijalankan pada perangkat.
 
 Peringatan build yang masih muncul: `.android/analytics.settings` tidak dapat ditulis, opsi kompatibilitas KSP/AGP bersifat experimental, Kotlin pada JDK 25 fallback ke target JVM 24, beberapa konstruktor `Locale(String, String)` deprecated, dan ikon `ArrowBack` lama di dua file layar yang sudah tidak menjadi entry point utama.
 
@@ -45,7 +45,7 @@ Status “implementasi ada” berarti alur/kode ditemukan dalam aplikasi; itu bu
 | AC39 | Workout tersimpan lokal setelah akun disiapkan; kondisi offline belum diuji pada perangkat. |
 | AC40 | Dialog konfirmasi discard dan transaksi hapus tersedia; integration test dibuat, belum dijalankan. |
 | AC41 | Layout utama dapat discroll, tetapi keyboard layar kecil dan font 200% belum diverifikasi. |
-| AC42 | Belum ada fixture 10.000 set atau pengukuran waktu analytics. |
+| AC42 | Integration benchmark fixture 10.000 set tersedia dan menguji hasil serta target 2 detik; belum dijalankan atau diukur pada perangkat. |
 
 ## Teori perkuliahan dan lokasi kode
 

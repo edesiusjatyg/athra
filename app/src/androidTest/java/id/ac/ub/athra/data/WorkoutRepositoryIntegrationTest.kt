@@ -2,9 +2,15 @@ package id.ac.ub.athra.data
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.withTransaction
+import android.os.SystemClock
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import id.ac.ub.athra.data.local.AppDatabase
+import id.ac.ub.athra.data.local.SessionExerciseEntity
+import id.ac.ub.athra.data.local.WorkoutSessionEntity
+import id.ac.ub.athra.data.local.WorkoutSetEntity
 import id.ac.ub.athra.data.repository.WorkoutRepository
 import id.ac.ub.athra.domain.model.SessionStatus
 import id.ac.ub.athra.domain.model.WeightUnit
@@ -13,6 +19,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -102,5 +109,32 @@ class WorkoutRepositoryIntegrationTest {
         assertEquals(latestSessionId, reference?.session?.id)
         assertEquals(BigDecimal("25"), reference?.sets?.single()?.weightKg)
         assertEquals(BigDecimal("30"), repository.historicalMax("user-a", "bench_press"))
+    }
+
+    @Test
+    fun analyticsFixtureTenThousandSetsLogsElapsedTime() = runBlocking {
+        repository.seedCatalog()
+        val now = System.currentTimeMillis()
+        database.withTransaction {
+            database.workoutDao().insertSession(
+                WorkoutSessionEntity("benchmark-session", "benchmark-user", "Benchmark", now - 60_000, now, "COMPLETED", now - 60_000, now),
+            )
+            database.workoutDao().insertSessionExercise(
+                SessionExerciseEntity("benchmark-exercise", "benchmark-session", "bench_press", 0),
+            )
+            database.workoutDao().insertSets((1..10_000).map { index ->
+                WorkoutSetEntity("benchmark-set-$index", "benchmark-exercise", index, 10, BigDecimal("32"))
+            })
+        }
+
+        val startedAt = SystemClock.elapsedRealtime()
+        val result = repository.analytics("benchmark-user", 7, java.time.ZoneId.systemDefault(), now)
+        val elapsedMs = SystemClock.elapsedRealtime() - startedAt
+        Log.i("AthraBenchmark", "analytics 10,000 sets elapsedMs=$elapsedMs")
+        assertEquals(1, result.sessionCount)
+        assertEquals(10_000, result.setCount)
+        assertEquals(100_000, result.repCount)
+        assertEquals(BigDecimal("3200000"), result.volumeKg)
+        assertTrue("Analytics took ${elapsedMs}ms (target < 2000ms)", elapsedMs < 2_000)
     }
 }
