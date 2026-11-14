@@ -41,6 +41,8 @@ fun WorkoutFlowScreen(
     var reps by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
     var editingSetId by rememberSaveable(draft.session.id) { mutableStateOf<String?>(null) }
+    var editingOriginalDisplay by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingOriginalKg by rememberSaveable { mutableStateOf<String?>(null) }
     var showLibrary by remember { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf("") }
     var muscleFilter by rememberSaveable { mutableStateOf("Semua") }
@@ -95,7 +97,7 @@ fun WorkoutFlowScreen(
             } else {
                 Text("Gerakan", style = MaterialTheme.typography.titleMedium)
                 draft.exercises.forEach { item ->
-                    TextButton(onClick = { exerciseId = item.exercise.id; editingSetId = null; reps = ""; weight = "" }) { Text(item.exercise.name) }
+                    TextButton(onClick = { exerciseId = item.exercise.id; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null; reps = ""; weight = "" }) { Text(item.exercise.name) }
                     item.sets.forEach { set ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             TextButton(onClick = {
@@ -103,8 +105,10 @@ fun WorkoutFlowScreen(
                                 editingSetId = set.id
                                 reps = set.reps.toString()
                                 weight = displayWeight(set.weightKg, weightUnit).stripTrailingZeros().toPlainString()
+                                editingOriginalDisplay = weight
+                                editingOriginalKg = set.weightKg.stripTrailingZeros().toPlainString()
                             }) { Text("${set.number}.  ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()} × ${set.reps}") }
-                            TextButton(onClick = { scope.launch { onDeleteSet(draft.session.id, set.id); if (editingSetId == set.id) editingSetId = null } }) { Text("Hapus") }
+                        TextButton(onClick = { scope.launch { onDeleteSet(draft.session.id, set.id); if (editingSetId == set.id) { editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null } } }) { Text("Hapus") }
                         }
                     }
                 }
@@ -115,8 +119,16 @@ fun WorkoutFlowScreen(
                     OutlinedTextField(weight, { weight = it }, label = { Text("Beban (${weightUnit.name.lowercase()})") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     Button(onClick = {
                         scope.launch {
-                            onSaveSet(draft.session.id, selected.exercise.id, editingSetId, reps, weight, weightUnit)
-                            reps = ""; weight = ""; editingSetId = null
+                            val unchangedWeight = editingSetId != null && weight == editingOriginalDisplay
+                            onSaveSet(
+                                draft.session.id,
+                                selected.exercise.id,
+                                editingSetId,
+                                reps,
+                                if (unchangedWeight) editingOriginalKg.orEmpty() else weight,
+                                if (unchangedWeight) WeightUnit.KG else weightUnit,
+                            )
+                            reps = ""; weight = ""; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null
                         }
                 }, modifier = Modifier.fillMaxWidth()) { Text(if (editingSetId == null) "Simpan set" else "Simpan perubahan set") }
                 }

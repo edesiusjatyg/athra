@@ -24,6 +24,7 @@ data class WorkoutUiState(
     val draft: WorkoutDraft? = null,
     val catalog: List<Exercise> = emptyList(),
     val recentSessions: List<WorkoutSession> = emptyList(),
+    val homeAnalytics: AnalyticsSummary? = null,
     val analytics: AnalyticsSummary? = null,
     val personalRecords: List<PersonalRecord> = emptyList(),
     val loading: Boolean = true,
@@ -48,7 +49,7 @@ class WorkoutViewModel(
             }
         }
         refreshDraft()
-        refreshAnalytics()
+        refreshHomeAnalytics()
     }
 
     fun refreshDraft() = viewModelScope.launch(Dispatchers.IO) {
@@ -64,6 +65,12 @@ class WorkoutViewModel(
     fun refreshAnalytics(days: Int = 7) = viewModelScope.launch(Dispatchers.IO) {
         runCatching { repository.analytics(userId, days, ZoneId.systemDefault(), System.currentTimeMillis()) }
             .onSuccess { mutableState.value = mutableState.value.copy(analytics = it) }
+            .onFailure { fail(it) }
+    }
+
+    fun refreshHomeAnalytics() = viewModelScope.launch(Dispatchers.IO) {
+        runCatching { repository.analytics(userId, 7, ZoneId.systemDefault(), System.currentTimeMillis(), calendarWeek = true) }
+            .onSuccess { mutableState.value = mutableState.value.copy(homeAnalytics = it) }
             .onFailure { fail(it) }
     }
 
@@ -103,6 +110,7 @@ class WorkoutViewModel(
 
     suspend fun save(sessionId: String): Boolean = mutateResult {
         repository.finalizeWorkout(userId, sessionId)
+        refreshHomeAnalytics()
         refreshAnalytics()
         null
     }

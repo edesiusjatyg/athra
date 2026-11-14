@@ -11,6 +11,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 private val LB_TO_KG = BigDecimal("0.45359237")
 private val DECIMAL_INPUT = Regex("[0-9]+(?:[.,][0-9]+)?")
@@ -69,13 +70,17 @@ fun calculateAnalytics(
     nowEpochMs: Long,
     periodDays: Int,
     zone: ZoneId,
+    calendarWeek: Boolean = false,
 ): AnalyticsSummary {
     require(periodDays in setOf(7, 30, 90))
     val now = Instant.ofEpochMilli(nowEpochMs).atZone(zone)
-    val firstDay = now.toLocalDate().minusDays((periodDays - 1).toLong())
+    val firstDay = if (calendarWeek) {
+        now.toLocalDate().minusDays((now.dayOfWeek.value - 1).toLong())
+    } else now.toLocalDate().minusDays((periodDays - 1).toLong())
     val start = firstDay.atStartOfDay(zone).toInstant().toEpochMilli()
     val included = sessions.filter { it.endedAt in start..nowEpochMs }
-    val daily = (0 until periodDays).associate { firstDay.plusDays(it.toLong()) to BigDecimal.ZERO }.toMutableMap()
+    val dayCount = if (calendarWeek) ChronoUnit.DAYS.between(firstDay, now.toLocalDate()).toInt() + 1 else periodDays
+    val daily = (0 until dayCount).associate { firstDay.plusDays(it.toLong()) to BigDecimal.ZERO }.toMutableMap()
     var setCount = 0
     var repCount = 0
     var volume = BigDecimal.ZERO

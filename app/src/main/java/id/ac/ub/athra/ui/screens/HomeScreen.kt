@@ -206,7 +206,7 @@ private fun ThisWeekSection(analytics: AnalyticsSummary?) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "7 hari terakhir",
+                text = "Minggu ini",
                 style = MaterialTheme.typography.headlineSmall.copy(color = Ink),
             )
             Text(

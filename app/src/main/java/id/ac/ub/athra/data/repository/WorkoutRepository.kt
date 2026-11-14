@@ -40,7 +40,7 @@ class WorkoutRepository(
         database.profileDao().upsert(profile.copy(displayName = cleanName, updatedAt = System.currentTimeMillis()))
     }
 
-    suspend fun analytics(userId: String, periodDays: Int, zone: java.time.ZoneId, now: Long): AnalyticsSummary {
+    suspend fun analytics(userId: String, periodDays: Int, zone: java.time.ZoneId, now: Long, calendarWeek: Boolean = false): AnalyticsSummary {
         val sessions = workout.getCompleted(userId).map { row ->
             val endTime = row.endedAt ?: row.startedAt
             val items = workout.getSessionExercises(row.sessionId).mapNotNull { item ->
@@ -50,7 +50,7 @@ class WorkoutRepository(
             }
             AnalyticsInputSession(endTime, items)
         }
-        return calculateAnalytics(sessions, now, periodDays, zone)
+        return calculateAnalytics(sessions, now, periodDays, zone, calendarWeek)
     }
 
     suspend fun previewRecords(userId: String, draft: WorkoutDraft): List<PersonalRecord> {

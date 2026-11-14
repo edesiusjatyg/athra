@@ -32,17 +32,18 @@ class AuthViewModel(
         viewModelScope.launch {
             authRepository.observeUser().collectLatest { user ->
                 if (user == null) {
-                    mutableState.value = mutableState.value.copy(restoring = false, user = null)
+                    mutableState.value = AuthUiState(restoring = false)
                 } else {
-                    mutableState.value = mutableState.value.copy(restoring = false, user = user)
+                    mutableState.value = AuthUiState(restoring = true, user = user)
                     runCatching {
                         withContext(Dispatchers.IO) {
                             workoutRepository.ensureProfile(user.uid, user.displayName, user.email)
                             workoutRepository.seedCatalog()
                         }
-                    }.onFailure { error ->
-                        mutableState.value = mutableState.value.copy(error = error.message ?: "Data lokal gagal dimuat.")
-                    }
+                    }.fold(
+                        onSuccess = { mutableState.value = AuthUiState(restoring = false, user = user) },
+                        onFailure = { error -> mutableState.value = AuthUiState(restoring = false, user = user, error = error.message ?: "Data lokal gagal dimuat.") },
+                    )
                 }
             }
         }
@@ -96,6 +97,22 @@ class AuthViewModel(
 
     fun clearError() {
         mutableState.value = mutableState.value.copy(error = null)
+    }
+
+    fun retryLocalSetup() {
+        val user = mutableState.value.user ?: return
+        viewModelScope.launch {
+            mutableState.value = mutableState.value.copy(restoring = true, error = null)
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    workoutRepository.ensureProfile(user.uid, user.displayName, user.email)
+                    workoutRepository.seedCatalog()
+                }
+            }.fold(
+                onSuccess = { mutableState.value = mutableState.value.copy(restoring = false, error = null) },
+                onFailure = { mutableState.value = mutableState.value.copy(restoring = false, error = it.message ?: "Data lokal gagal dimuat.") },
+            )
+        }
     }
 
     fun signOut() {

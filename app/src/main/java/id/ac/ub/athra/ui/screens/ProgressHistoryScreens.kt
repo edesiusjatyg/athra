@@ -16,9 +16,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import id.ac.ub.athra.domain.calculation.displayNumber
 import id.ac.ub.athra.domain.calculation.calculateTotals
+import id.ac.ub.athra.domain.calculation.displayWeight
 import id.ac.ub.athra.domain.model.AnalyticsSummary
 import id.ac.ub.athra.domain.model.CompletedWorkout
 import id.ac.ub.athra.domain.model.PersonalRecordStatus
+import id.ac.ub.athra.domain.model.WeightUnit
 import id.ac.ub.athra.domain.model.WorkoutSession
 import id.ac.ub.athra.ui.components.AthraCard
 import id.ac.ub.athra.ui.theme.Accent
@@ -135,7 +137,7 @@ fun HistoryScreen(sessions: List<WorkoutSession>, onNavigate: (Int) -> Unit, onO
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun WorkoutDetailScreen(workout: CompletedWorkout?, onBack: () -> Unit) {
+fun WorkoutDetailScreen(workout: CompletedWorkout?, weightUnit: WeightUnit, onBack: () -> Unit) {
     Scaffold(
         containerColor = Background,
         topBar = { TopAppBar(title = { Text("Detail latihan") }, navigationIcon = { TextButton(onClick = onBack) { Text("Kembali") } }) },
@@ -147,12 +149,12 @@ fun WorkoutDetailScreen(workout: CompletedWorkout?, onBack: () -> Unit) {
             val draft = data.draft
             val totals = calculateTotals(draft)
             Text(draft.session.name, style = MaterialTheme.typography.headlineMedium, color = Ink)
-            Text("${totals.setCount} set · ${totals.repCount} repetisi · ${displayNumber(totals.volumeKg)} kg", color = Secondary)
+            Text("${totals.setCount} set · ${totals.repCount} repetisi · ${displayNumber(displayWeight(totals.volumeKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Secondary)
             Spacer(Modifier.height(20.dp))
             draft.exercises.forEach { item ->
                 Text(item.exercise.name, style = MaterialTheme.typography.titleLarge, color = Ink)
                 item.sets.forEach { set ->
-                    Text("Set ${set.number} · ${set.reps} repetisi · ${displayNumber(set.weightKg)} kg")
+                    Text("Set ${set.number} · ${set.reps} repetisi · ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}")
                 }
                 data.personalRecords.firstOrNull { it.exerciseId == item.exercise.id }?.let { record ->
                     val status = when (record.status) {
@@ -161,7 +163,7 @@ fun WorkoutDetailScreen(workout: CompletedWorkout?, onBack: () -> Unit) {
                         PersonalRecordStatus.MATCHED -> "Menyamai rekor"
                         PersonalRecordStatus.BELOW_RECORD -> "Belum melampaui rekor"
                     }
-                    Text("$status · ${displayNumber(record.currentMaxKg)} kg", color = Accent)
+                    Text("$status · ${displayNumber(displayWeight(record.currentMaxKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Accent)
                 }
                 Spacer(Modifier.height(16.dp))
             }

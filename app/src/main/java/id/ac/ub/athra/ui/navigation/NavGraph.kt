@@ -28,6 +28,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import id.ac.ub.athra.domain.model.CompletedWorkout
 import id.ac.ub.athra.domain.model.WeightUnit
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,7 +63,7 @@ fun AthraNavGraph(
                 userName = userName,
                 draft = workoutState.draft,
                 recentSessions = workoutState.recentSessions,
-                analytics = workoutState.analytics,
+                analytics = workoutState.homeAnalytics,
                 onStartWorkout = { navController.navigate(Routes.PreWorkout.route) },
                 onResumeWorkout = {
                     onResumeWorkout()
@@ -115,6 +116,7 @@ fun AthraNavGraph(
             )
         }
         composable(Routes.Progress.route) {
+            LaunchedEffect(Unit) { workoutViewModel.refreshAnalytics(periodDays) }
             ProgressScreen(
                 analytics = workoutState.analytics,
                 periodDays = periodDays,
@@ -173,7 +175,7 @@ fun AthraNavGraph(
             }
         }
         composable(Routes.WorkoutDetail.route) {
-            WorkoutDetailScreen(selectedWorkout) { navController.popBackStack() }
+            WorkoutDetailScreen(selectedWorkout, weightUnit) { navController.popBackStack() }
         }
         composable(Routes.Preferences.route) {
             PreferencesScreen(

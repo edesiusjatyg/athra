@@ -10,9 +10,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import id.ac.ub.athra.ui.auth.AuthScreen
 import id.ac.ub.athra.ui.auth.AuthViewModel
@@ -38,6 +43,12 @@ class MainActivity : ComponentActivity() {
                 when {
                     state.restoring -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
+                    }
+                    state.user != null && state.error != null -> Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
+                        Text("Data akun belum siap dimuat.")
+                        Text(state.error.orEmpty())
+                        Button(onClick = authViewModel::retryLocalSetup) { Text("Coba lagi") }
+                        Button(onClick = authViewModel::signOut) { Text("Keluar") }
                     }
                     state.user == null -> AuthScreen(state, authViewModel::signIn, authViewModel::signUp)
                     else -> {

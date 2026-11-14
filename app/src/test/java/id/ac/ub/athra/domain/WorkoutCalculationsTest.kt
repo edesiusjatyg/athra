@@ -68,4 +68,77 @@ class WorkoutCalculationsTest {
         assertEquals(7, result.dailyVolumeKg.size)
         assertTrue(result.dailyVolumeKg.all { it.second >= BigDecimal.ZERO })
     }
+
+    @Test
+    fun analyticsIncludesFirstDayAndExcludesImmediatelyBeforeIt() {
+        val exercise = Exercise("row", "Row", "Back", "Cable", "")
+        val zone = ZoneId.of("Asia/Jakarta")
+        val now = java.time.LocalDate.of(2026, 11, 14).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        val firstDay = java.time.LocalDate.of(2026, 11, 8).atStartOfDay(zone).toInstant().toEpochMilli()
+        val inputs = listOf(
+            AnalyticsInputSession(firstDay - 1, listOf(AnalyticsInputExercise(exercise, listOf(10 to BigDecimal("10"))))),
+            AnalyticsInputSession(firstDay, listOf(AnalyticsInputExercise(exercise, listOf(10 to BigDecimal("10"))))),
+        )
+        val result = calculateAnalytics(inputs, now, 7, zone)
+        assertEquals(1, result.sessionCount)
+        assertEquals(BigDecimal("100"), result.volumeKg)
+    }
+
+    @Test
+    fun favoriteFrequencyCountsSessionsAndBreaksTiesAlphabetically() {
+        val alpha = Exercise("a", "Alpha", "Back", "Cable", "")
+        val beta = Exercise("b", "beta", "Chest", "Barbell", "")
+        val zone = ZoneId.of("UTC")
+        val now = java.time.LocalDate.of(2026, 11, 14).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        val sessions = listOf(
+            AnalyticsInputSession(now - 2_000, listOf(AnalyticsInputExercise(beta, listOf(10 to BigDecimal.ONE, 10 to BigDecimal.ONE)), AnalyticsInputExercise(alpha, listOf(1 to BigDecimal.ONE)))),
+            AnalyticsInputSession(now - 1_000, listOf(AnalyticsInputExercise(beta, listOf(10 to BigDecimal.ONE)), AnalyticsInputExercise(alpha, listOf(1 to BigDecimal.ONE)))),
+        )
+        val result = calculateAnalytics(sessions, now, 7, zone)
+        assertEquals("Alpha", result.favoriteExercise?.name)
+        assertEquals(2, result.favoriteSessionCount)
+    }
+
+    @Test
+    fun zeroLoadSessionIsNotAnEmptyPeriod() {
+        val exercise = Exercise("plank", "Plank", "Core", "Bodyweight", "")
+        val zone = ZoneId.of("UTC")
+        val now = java.time.LocalDate.of(2026, 11, 14).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        val result = calculateAnalytics(
+            listOf(AnalyticsInputSession(now, listOf(AnalyticsInputExercise(exercise, listOf(30 to BigDecimal.ZERO))))),
+            now,
+            30,
+            zone,
+        )
+        assertEquals(1, result.sessionCount)
+        assertEquals(1, result.setCount)
+        assertEquals(30, result.repCount)
+        assertEquals(BigDecimal.ZERO, result.volumeKg)
+        assertEquals(BigDecimal.ZERO, result.dailyVolumeKg.last().second)
+    }
+
+    @Test
+    fun displayAndParsePoundsPreserveCanonicalValueForExactConversion() {
+        val canonicalKg = BigDecimal("4.53592370")
+        val displayedLb = displayWeight(canonicalKg, WeightUnit.LB)
+        assertEquals("10", displayedLb.stripTrailingZeros().toPlainString())
+        assertEquals(0, canonicalKg.compareTo(parseWeightKg(displayedLb.toPlainString(), WeightUnit.LB)))
+    }
+
+    @Test
+    fun homeAnalyticsUsesMondayToTodayCalendarWeek() {
+        val exercise = Exercise("press", "Press", "Chest", "Dumbbell", "")
+        val zone = ZoneId.of("Asia/Jakarta")
+        val now = java.time.LocalDate.of(2026, 11, 14).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        val monday = java.time.LocalDate.of(2026, 11, 9).atStartOfDay(zone).toInstant().toEpochMilli()
+        val sunday = java.time.LocalDate.of(2026, 11, 8).atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+        val sessions = listOf(
+            AnalyticsInputSession(monday, listOf(AnalyticsInputExercise(exercise, listOf(10 to BigDecimal("20"))))),
+            AnalyticsInputSession(sunday, listOf(AnalyticsInputExercise(exercise, listOf(10 to BigDecimal("20"))))),
+        )
+        val result = calculateAnalytics(sessions, now, 7, zone, calendarWeek = true)
+        assertEquals(monday, result.startEpochMs)
+        assertEquals(1, result.sessionCount)
+        assertEquals(6, result.dailyVolumeKg.size)
+    }
 }
