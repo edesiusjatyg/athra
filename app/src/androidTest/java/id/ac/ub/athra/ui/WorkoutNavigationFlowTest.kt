@@ -1,15 +1,19 @@
 package id.ac.ub.athra.ui
 
+import android.util.Log
+import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -36,12 +40,11 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class WorkoutNavigationFlowTest {
     @get:Rule
-    val compose = createComposeRule()
+    val compose = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var database: AppDatabase
     private lateinit var repository: WorkoutRepository
     private lateinit var storeOwner: ViewModelStoreOwner
-    private lateinit var viewModelStore: ViewModelStore
     private lateinit var workoutViewModel: WorkoutViewModel
 
     @Before
@@ -52,10 +55,11 @@ class WorkoutNavigationFlowTest {
             .allowMainThreadQueries()
             .build()
         repository = WorkoutRepository(database, context.assets)
-        viewModelStore = ViewModelStore()
-        storeOwner = object : ViewModelStoreOwner {
-            override val viewModelStore: ViewModelStore = this@WorkoutNavigationFlowTest.viewModelStore
+        runBlocking {
+            repository.ensureProfile("nav-test-user", "Atlet Uji", "atlet@example.test")
+            repository.seedCatalog()
         }
+        storeOwner = compose.activity
         workoutViewModel = ViewModelProvider(
             storeOwner,
             WorkoutViewModelFactory("nav-test-user", repository),
@@ -64,12 +68,12 @@ class WorkoutNavigationFlowTest {
 
     @After
     fun tearDown() {
-        viewModelStore.clear()
         database.close()
     }
 
     @Test
     fun workoutCanStartAddSetReviewAndSaveAcrossGraphRoutes() {
+        var savedUnit: WeightUnit? = null
         compose.setContent {
             CompositionLocalProvider(LocalViewModelStoreOwner provides storeOwner) {
                 AthraTheme {
@@ -78,7 +82,7 @@ class WorkoutNavigationFlowTest {
                         navController = rememberNavController(),
                         userId = "nav-test-user",
                         database = database,
-                        userName = "Atlet Uji",
+                        userName = state.profileName.ifBlank { "Atlet Uji" },
                         workoutState = state,
                         workoutViewModel = workoutViewModel,
                         workoutViewModelFactory = WorkoutViewModelFactory(
@@ -90,7 +94,7 @@ class WorkoutNavigationFlowTest {
                         onSignOut = {},
                         userEmail = "atlet@example.test",
                         weightUnit = WeightUnit.KG,
-                        onSaveUnit = {},
+                        onSaveUnit = { savedUnit = it },
                     )
                 }
             }
@@ -114,8 +118,16 @@ class WorkoutNavigationFlowTest {
         compose.waitUntil(5_000) {
             runBlocking { repository.getDraft("nav-test-user")?.exercises?.any { it.sets.isNotEmpty() } == true }
         }
+        compose.onNodeWithText("Beban (kg)").performImeAction()
+        compose.waitForIdle()
+        compose.waitUntil(5_000) {
+            runCatching { compose.onNodeWithText("Selesai dan tinjau").assertIsEnabled() }.isSuccess
+        }
 
         compose.onNodeWithText("Selesai dan tinjau").performClick()
+        compose.waitUntil(5_000) {
+            runBlocking { repository.getDraft("nav-test-user")?.session?.status?.name == "REVIEW" }
+        }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Ringkasan workout").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Simpan sesi").performClick()
         compose.waitUntil(5_000) {
@@ -126,5 +138,25 @@ class WorkoutNavigationFlowTest {
         val completed = runBlocking { database.workoutDao().getCompleted("nav-test-user") }
         assertEquals(1, completed.size)
         assertNotNull(runBlocking { repository.getWorkoutDetail("nav-test-user", completed.single().sessionId) })
+
+        compose.onNodeWithText("Lihat semua").performClick()
+        compose.onNodeWithText("Riwayat latihan").assertIsDisplayed()
+        compose.onNodeWithText(completed.single().name).performClick()
+        compose.onNodeWithText("Detail latihan").assertIsDisplayed()
+        compose.onNodeWithText("Bench Press").assertIsDisplayed()
+        compose.onNodeWithText("Kembali").performClick()
+        compose.onNodeWithText("Profil").performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("Edit profil").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        compose.onNodeWithText("Edit profil").performClick()
+        compose.onNodeWithText("Nama").performTextReplacement("Nama Baru")
+        compose.onNodeWithText("Simpan").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Nama Baru").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Preferensi satuan").performClick()
+        compose.onNodeWithText("Pound (lb)").performClick()
+        compose.onNodeWithText("Simpan").performClick()
+        compose.waitUntil(5_000) { savedUnit == WeightUnit.LB }
     }
 }

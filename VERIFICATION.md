@@ -4,37 +4,28 @@ Tanggal catatan: 14 November 2026.
 
 ## Perintah yang dijalankan
 
-Perintah dijalankan dengan cache Gradle/Android diarahkan ke `/tmp` dan compiler Kotlin in-process karena workspace membatasi akses ke direktori Android default:
+Cache Gradle/Android diarahkan ke `/tmp` karena workspace membatasi akses ke direktori Android default. Perintah verifikasi source saat ini:
 
 ```sh
-GRADLE_USER_HOME=/tmp/athra-gradle ANDROID_USER_HOME=/tmp/athra-android ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease :app:connectedDebugAndroidTest --no-configuration-cache --console=plain -Pkotlin.compiler.execution.strategy=in-process -Pathra.authEmulator=true -Pathra.authEmulatorHost=127.0.0.1
+XDG_DATA_HOME=/tmp/athra-xdg ANDROID_USER_HOME=/tmp/athra-android GRADLE_USER_HOME=/tmp/athra-gradle ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease
+XDG_DATA_HOME=/tmp/athra-xdg ANDROID_USER_HOME=/tmp/athra-android GRADLE_USER_HOME=/tmp/athra-gradle ./gradlew connectedDebugAndroidTest
 ```
 
-Hasil build lokal terakhir (14 November 2026): **BUILD SUCCESSFUL** untuk 14 unit test, lint, debug/release assemble, dan kompilasi instrumented test. ViewModel workout kini dimiliki oleh NavBackStackEntry graph dan tetap hidup saat berpindah antar destination di graph. Reset H1/H2 ditambahkan sebagai alat debug yang hanya tampil saat Auth Emulator diaktifkan; release menyediakan implementasi no-op. Input workout memilih keyboard angka/desimal, menangani aksi IME, dan menambahkan inset keyboard ke area scroll. Pengamatan StateFlow memakai `collectAsStateWithLifecycle`. Lint melaporkan warning dependency versi lebih baru, saran modifier Compose, label Activity redundan, serta resource template yang tidak dipakai; tidak ada lint error.
+Hasil source saat ini (14 November 2026): **14/14 unit test**, **25/25 instrumented test**, lint, dan debug/release assemble berhasil. Instrumented dijalankan pada `emulator-5554`, Medium_Phone AVD, API 37, x86_64; tidak ada tes yang dilewati. Suite mencakup 8 tes Room, 1 constraint, 11 Compose smoke, 1 sesi penuh lintas route, dan 4 auth validation. Review/empty analytics dan draft setelah database dibuka ulang juga diuji. Migration belum diperlukan karena database masih schema versi pertama.
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
-Perintah suite lengkap di atas berakhir **BUILD SUCCESSFUL** pada 14 November 2026: **14/14 unit test**, lint, debug/release assemble, dan **12/12 instrumented test**. Instrumented terdiri dari lima tes repository Room, satu constraint, dan enam Compose smoke test; tidak ada yang dilewati. Perangkat: `emulator-5554`, Medium_Phone AVD, API 37, x86_64. Benchmark fixture 10.000 set mencatat **147 ms**, di bawah target 2 detik; angka ini hanya waktu query/kalkulasi repository Room, bukan frame time UI.
+Benchmark fixture 10.000 set mencatat **147 ms**, di bawah target 2 detik; angka ini hanya waktu query/kalkulasi repository Room, bukan frame time UI.
 
 ## Pemeriksaan revisi terbaru
 
-Pada revisi `47dd042` dan perubahan yang sedang diverifikasi, workout graph kini memakai route terpisah untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. Ditambahkan state loading/error untuk pemulihan draft dan retry katalog, regression tests untuk menunggu pemeriksaan draft dan mempertahankan layar workout ketika discard gagal, tes layar Summary/Edit Profile, dan uji rollback transaksi finalisasi.
-
-Perintah yang dijalankan pada source saat ini:
-
-```sh
-./gradlew :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin testDebugUnitTest
-./gradlew lintDebug
-./gradlew assembleDebug
-```
-
-Semua perintah compile, unit test, lint, dan debug assemble pada batch terbaru berhasil; 14/14 unit test lulus. Source saat ini memiliki **23 instrumented test** (6 tes Room, 1 constraint, 11 Compose flow smoke, 1 end-to-end workout navigation, dan 4 auth validation). Test source lengkap berhasil dikompilasi. `adb devices` tidak menampilkan perangkat, jadi 23 tes tersebut belum dieksekusi dan pengukuran rotasi/IME belum diulang. Hasil connected run **12/12** di bagian atas adalah bukti historis pada revisi sebelumnya, bukan hasil untuk source terbaru.
+Workout graph memakai route terpisah untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. Tes navigasi penuh kini melewati sesi mulai, tambah gerakan, simpan set, review, finalisasi, History/Detail, Profile/Edit Profile, dan Preferences. Test menegaskan perpindahan navigasi setelah operasi Room yang suspend berjalan pada main thread. State mutation memakai lock tersinkron agar UI tidak mengaktifkan aksi sebelum operasi sebelumnya benar-benar selesai.
 
 Metadata Figma memastikan page `ATHRA · Minimal Redesign` ber-ID `29:2`. Permintaan screenshot dan context ditolak karena batas panggilan Figma MCP Starter; review visual dan pencocokan implementasi terhadap page tersebut masih terbuka.
 
 APK dipasang dan diuji dengan Firebase Auth Emulator lokal (`demo-athra`, port 9099). Auth Emulator dapat diakses lewat `adb reverse tcp:9099 tcp:9099` dan debug host `127.0.0.1`. Pendaftaran akun dengan nama, sign in, reset fixture H1/H2, lalu pembuatan H3 lewat UI berhasil. Home menampilkan H3 terbaru; Progress berubah dari H1/H2 (2 sesi, 4 set, 38 repetisi, 1.190 kg) menjadi H1/H2/H3 (3 sesi, 7 set, 68 repetisi, 2.210 kg). Detail H3 menyimpan snapshot “Rekor baru” Bench Press 32 kg dan “Menyamai rekor” Squat 40 kg.
 
-Mode Wi-Fi/data dimatikan setelah sign in; sesi offline berhasil disimpan dan tampil di Home. Force-stop saat draft aktif berisi satu set, lalu relaunch, memulihkan akun, set Bench Press 10×20 kg, dan timer. Pada font scale 200%, Home menumpuk judul/subjudul, workout dapat di-scroll, dan tombol Simpan set dapat dipakai. Otomasi ADB tidak menampilkan soft keyboard Android di layar, jadi inset/CTA saat keyboard software benar-benar terbuka belum dibuktikan. Rotasi dan pergantian akun belum diuji manual.
+Mode Wi-Fi/data dimatikan setelah sign in; sesi offline berhasil disimpan dan tampil di Home. Force-stop saat draft aktif berisi satu set, lalu relaunch, memulihkan akun, set Bench Press 10×20 kg, dan timer. Pada font scale 200%, Home menumpuk judul/subjudul, workout dapat di-scroll, tombol Simpan set dapat dipakai, dan bottom navigation menampilkan ikon yang tetap dapat membuka Latihan, Progress, serta Profil. Soft keyboard Android tidak terbuka melalui otomasi ADB, jadi inset/CTA saat keyboard benar-benar terbuka belum dibuktikan. Rotasi dan pergantian akun belum diuji manual. Font scale emulator dikembalikan ke 100% setelah pengecekan.
 
 Screenshot runtime: `screenshots/runtime/home-completed-api37.png`, `home-h3-api37.png`, `exercise-library-api37.png`, `workout-summary-api37.png`, `workout-detail-pr-h3-api37.png`, `exercise-reference-h3-api37.png`, `active-reference-h3-api37.png`, `progress-h3-api37.png`, dan `workout-validation-api37.png`.
 
@@ -55,10 +46,10 @@ Status “implementasi ada” berarti alur/kode ditemukan dalam aplikasi; itu bu
 | AC18–20 | PR baseline/baru/sama/di bawah dan identitas exercise stabil tersedia; status PR tercakup unit test. |
 | AC21–23 | Referensi sesi terakhir, perbandingan nomor set, delta, dan kondisi tanpa pembanding tersedia; integration test memilih sesi terbaru lulus. Tampilan referensi H3 tersimpan di screenshot. |
 | AC24 | Analytics fixture H1/H2/H3 menampilkan 3 sesi, 7 set, 68 repetisi, 2.210 kg; cocok dengan unit/instrumented test. |
-| AC25 | Sesi REVIEW dikecualikan oleh query COMPLETED; belum ada test spesifik REVIEW. |
+| AC25 | Sesi REVIEW dikecualikan oleh query COMPLETED; tes repository review/empty analytics lulus. |
 | AC26–27 | Favorit dihitung per sesi dan tie-break abjad; tercakup unit test. |
 | AC28 | Boundary hari pertama 7/30/90 tercakup unit test; sesi tepat tengah malam sebelum batas dikeluarkan, sesi tepat pada awal hari dihitung. Sesi lintas tengah malam juga diuji untuk timer dan bucket berdasarkan hari selesai. |
-| AC29 | Empty state data analytics tersedia; belum ada test khusus empty fixture. |
+| AC29 | Empty state data analytics tersedia; tes empty history memastikan belum ada data analytics. |
 | AC30 | Sesi beban nol tetap dihitung dan tidak dianggap kosong; tercakup unit test. |
 | AC31 | Konversi 10 lb ke 4.53592370 kg tercakup unit test. |
 | AC32–33 | Preferensi unit disimpan per UID dan konversi tampilan tersedia; Compose test penyimpanan eksplisit lulus. Persistensi lintas relaunch dan isolasi dua UID belum diuji manual. |
@@ -66,7 +57,7 @@ Status “implementasi ada” berarti alur/kode ditemukan dalam aplikasi; itu bu
 | AC35–38 | Filter dan detail exercise dicoba manual; nama saat sign-up sekarang tersimpan sebagai nama profil. Pencegahan duplikat tersedia; Edit Profile dan isolasi preferensi per UID belum diuji manual. |
 | AC39 | Sesi diselesaikan saat Wi-Fi dan data dimatikan setelah login; Home menampilkan sesi tersimpan lokal. |
 | AC40 | Tes repository bahwa discard menghapus draft beserta child rows lulus pada emulator. |
-| AC41 | Font scale 200% diuji manual: Home bertumpuk, layar workout dapat di-scroll, set tersimpan, dan CTA dapat dijangkau. Soft keyboard, inset IME, perangkat kecil, dan audit target 48 dp belum sepenuhnya diverifikasi. |
+| AC41 | Font scale 200% diuji manual: Home bertumpuk, layar workout dapat di-scroll, set tersimpan, CTA dapat dijangkau, dan bottom navigation tetap dapat dipakai dengan ikon ber-content description. Soft keyboard, inset IME, perangkat kecil, dan audit target 48 dp belum sepenuhnya diverifikasi. |
 | AC42 | Benchmark fixture 10.000 set lulus dalam 147 ms pada Medium_Phone AVD, API 37, x86_64 (target <2 detik). Ini bukan pengukuran UI frame time. |
 
 ## Teori perkuliahan dan lokasi kode

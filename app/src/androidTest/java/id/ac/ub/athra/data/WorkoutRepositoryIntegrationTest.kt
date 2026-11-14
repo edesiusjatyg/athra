@@ -125,6 +125,60 @@ class WorkoutRepositoryIntegrationTest {
     }
 
     @Test
+    fun activeDraftSurvivesDatabaseCloseAndReopen() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val databaseName = "athra-recovery-${java.util.UUID.randomUUID()}.db"
+        var firstDatabase: AppDatabase? = null
+        var reopenedDatabase: AppDatabase? = null
+        var firstClosed = false
+        try {
+            val createdDatabase = Room.databaseBuilder(context, AppDatabase::class.java, databaseName)
+                .addCallback(AppDatabase.validationCallback)
+                .build()
+            firstDatabase = createdDatabase
+            val firstRepository = WorkoutRepository(createdDatabase, context.assets)
+            firstRepository.seedCatalog()
+            val draft = firstRepository.startOrResume("recovery-user", "Pulihkan draft", now = 1_000L)
+            firstRepository.addExercise("recovery-user", draft.session.id, "bench_press")
+            firstRepository.saveSet("recovery-user", draft.session.id, "bench_press", null, "10", "32", WeightUnit.KG)
+            createdDatabase.close()
+            firstClosed = true
+
+            val reopened = Room.databaseBuilder(context, AppDatabase::class.java, databaseName)
+                .addCallback(AppDatabase.validationCallback)
+                .build()
+            reopenedDatabase = reopened
+            val recovered = WorkoutRepository(reopened, context.assets).getDraft("recovery-user")
+
+            assertNotNull(recovered)
+            assertEquals(draft.session.id, recovered?.session?.id)
+            assertEquals(BigDecimal("32"), recovered?.exercises?.single()?.sets?.single()?.weightKg)
+        } finally {
+            if (!firstClosed) firstDatabase?.close()
+            reopenedDatabase?.close()
+            context.deleteDatabase(databaseName)
+        }
+    }
+
+    @Test
+    fun reviewAndEmptyHistoryDoNotCreateAnalyticsData() = runBlocking {
+        repository.seedCatalog()
+        val review = repository.startOrResume("user-a", "Belum disimpan", now = 1_000L)
+        repository.addExercise("user-a", review.session.id, "bench_press")
+        repository.saveSet("user-a", review.session.id, "bench_press", null, "10", "32", WeightUnit.KG)
+        repository.enterReview("user-a", review.session.id, endedAt = 2_000L)
+
+        val summary = repository.analytics("user-a", 7, java.time.ZoneId.of("UTC"), 3_000L)
+
+        assertEquals(0, summary.sessionCount)
+        assertEquals(0, summary.setCount)
+        assertEquals(0, summary.repCount)
+        assertEquals(BigDecimal.ZERO, summary.volumeKg)
+        assertNull(summary.favoriteExercise)
+        assertEquals(0, summary.favoriteSessionCount)
+    }
+
+    @Test
     fun progressiveReferenceUsesMostRecentSessionRatherThanMaximumLoad() = runBlocking {
         repository.seedCatalog()
         suspend fun complete(load: String, startedAt: Long): String {

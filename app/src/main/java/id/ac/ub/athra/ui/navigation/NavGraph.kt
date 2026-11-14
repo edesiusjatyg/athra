@@ -58,6 +58,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,7 +90,9 @@ fun AthraNavGraph(
         scope.launch {
             workoutViewModel.refreshDraft().join()
             workoutViewModel.refreshHomeAnalytics().join()
-            navController.popBackStack(Routes.Home.route, false)
+            withContext(Dispatchers.Main.immediate) {
+                navController.popBackStack(Routes.Home.route, false)
+            }
         }
     }
     NavHost(
@@ -115,10 +119,12 @@ fun AthraNavGraph(
                     scope.launch {
                         workoutViewModel.refreshDraft().join()
                         val draft = workoutViewModel.state.value.draft ?: return@launch
-                        navController.navigate(Routes.WorkoutGraph.route) { launchSingleTop = true }
-                        navController.navigate(
-                            if (draft.session.status == SessionStatus.REVIEW) Routes.Summary.route else Routes.LiveWorkout.route,
-                        ) { launchSingleTop = true }
+                        withContext(Dispatchers.Main.immediate) {
+                            navController.navigate(Routes.WorkoutGraph.route) { launchSingleTop = true }
+                            navController.navigate(
+                                if (draft.session.status == SessionStatus.REVIEW) Routes.Summary.route else Routes.LiveWorkout.route,
+                            ) { launchSingleTop = true }
+                        }
                     }
                 },
                 onViewAll = { navController.navigate(Routes.History.route) },
@@ -151,7 +157,11 @@ fun AthraNavGraph(
                     onBack = { navController.popBackStack() },
                     onBeginSession = {
                         scope.launch {
-                            if (graphViewModel.start() != null) navController.navigate(Routes.ExerciseLibrary.route)
+                            if (graphViewModel.start() != null) {
+                                withContext(Dispatchers.Main.immediate) {
+                                    navController.navigate(Routes.ExerciseLibrary.route)
+                                }
+                            }
                         }
                     },
                     onQuickStart = { navController.navigate(Routes.QuickStart.route) },
@@ -160,7 +170,9 @@ fun AthraNavGraph(
                         scope.launch {
                             val draft = graphState.draft ?: return@launch
                             if (graphViewModel.discardResult(draft.session.id) && graphViewModel.start() != null) {
-                                navController.navigate(Routes.ExerciseLibrary.route)
+                                withContext(Dispatchers.Main.immediate) {
+                                    navController.navigate(Routes.ExerciseLibrary.route)
+                                }
                             }
                         }
                     },
@@ -179,7 +191,9 @@ fun AthraNavGraph(
                         scope.launch {
                             if (graphViewModel.start(graphState.quickStartName) != null) {
                                 graphViewModel.updateQuickStartName("")
-                                navController.navigate(Routes.ExerciseLibrary.route)
+                                withContext(Dispatchers.Main.immediate) {
+                                    navController.navigate(Routes.ExerciseLibrary.route)
+                                }
                             }
                         }
                     },
@@ -228,10 +242,12 @@ fun AthraNavGraph(
                             val sessionId = graphViewModel.state.value.draft?.session?.id ?: return@launch
                             if (graphViewModel.addExerciseResult(sessionId, exerciseId)) {
                                 graphViewModel.selectExercise(exerciseId)
-                                val returnedToActive = navController.popBackStack(Routes.LiveWorkout.route, inclusive = false)
-                                if (!returnedToActive) {
-                                    navController.popBackStack(Routes.ExerciseLibrary.route, inclusive = true)
-                                    navController.navigate(Routes.LiveWorkout.route) { launchSingleTop = true }
+                                withContext(Dispatchers.Main.immediate) {
+                                    val returnedToActive = navController.popBackStack(Routes.LiveWorkout.route, inclusive = false)
+                                    if (!returnedToActive) {
+                                        navController.popBackStack(Routes.ExerciseLibrary.route, inclusive = true)
+                                        navController.navigate(Routes.LiveWorkout.route) { launchSingleTop = true }
+                                    }
                                 }
                             }
                         }
@@ -264,7 +280,11 @@ fun AthraNavGraph(
                         onRemoveExercise = graphViewModel::removeExercise,
                         onFinish = { sessionId ->
                             val finished = graphViewModel.finish(sessionId)
-                            if (finished) navController.navigate(Routes.Summary.route) { launchSingleTop = true }
+                            if (finished) {
+                                withContext(Dispatchers.Main.immediate) {
+                                    navController.navigate(Routes.Summary.route) { launchSingleTop = true }
+                                }
+                            }
                             finished
                         },
                         onResume = graphViewModel::resume,
@@ -300,7 +320,11 @@ fun AthraNavGraph(
                         state = graphState,
                         weightUnit = weightUnit,
                         onResume = {
-                            scope.launch { if (graphViewModel.resumeResult(draft.session.id)) navController.popBackStack() }
+                            scope.launch {
+                                if (graphViewModel.resumeResult(draft.session.id)) {
+                                    withContext(Dispatchers.Main.immediate) { navController.popBackStack() }
+                                }
+                            }
                         },
                         onSave = {
                             scope.launch { if (graphViewModel.save(draft.session.id)) exitWorkoutToHome() }
@@ -396,7 +420,12 @@ fun AthraNavGraph(
             PreferencesScreen(
                 initialUnit = weightUnit,
                 onBack = { navController.popBackStack() },
-                onSave = { unit -> scope.launch { onSaveUnit(unit); navController.popBackStack() } },
+                onSave = {
+                    unit -> scope.launch {
+                        onSaveUnit(unit)
+                        withContext(Dispatchers.Main.immediate) { navController.popBackStack() }
+                    }
+                },
             )
         }
         composable(Routes.EditProfile.route) {
@@ -405,7 +434,13 @@ fun AthraNavGraph(
                 email = workoutState.profileEmail.ifBlank { userEmail },
                 error = workoutState.profileError ?: workoutState.error,
                 onBack = { workoutViewModel.refreshProfile(); navController.popBackStack() },
-                onSave = { name -> scope.launch { if (workoutViewModel.updateProfileName(name)) navController.popBackStack() } },
+                onSave = {
+                    name -> scope.launch {
+                        if (workoutViewModel.updateProfileName(name)) {
+                            withContext(Dispatchers.Main.immediate) { navController.popBackStack() }
+                        }
+                    }
+                },
                 busy = workoutState.busy,
             )
         }

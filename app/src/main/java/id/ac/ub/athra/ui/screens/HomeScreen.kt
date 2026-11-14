@@ -9,8 +9,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -380,7 +384,13 @@ private fun RecentSessionRow(sessionId: String, name: String, meta: String, onCl
 
 @Composable
 fun AthraBottomNav(selected: Int, onSelect: (Int) -> Unit) {
-    val items = listOf("Beranda", "Latihan", "Progress", "Profil")
+    val largeFont = LocalDensity.current.fontScale >= 1.5f
+    val items = listOf(
+        "Beranda" to Icons.Filled.Home,
+        "Latihan" to Icons.Filled.FitnessCenter,
+        "Progress" to Icons.AutoMirrored.Filled.ShowChart,
+        "Profil" to Icons.Filled.Person,
+    )
     NavigationBar(
         containerColor = Surface,
         tonalElevation = 0.dp,
@@ -390,17 +400,16 @@ fun AthraBottomNav(selected: Int, onSelect: (Int) -> Unit) {
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         ),
     ) {
-        items.forEachIndexed { index, label ->
+        items.forEachIndexed { index, (label, icon) ->
             NavigationBarItem(
                 selected = index == selected,
                 onClick = { onSelect(index) },
-                label = {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                    )
+                label = if (largeFont) null else {
+                    { Text(text = label, style = MaterialTheme.typography.labelSmall) }
                 },
-                icon = {},
+                icon = {
+                    if (largeFont) Icon(imageVector = icon, contentDescription = label)
+                },
                 colors = NavigationBarItemDefaults.colors(
                     selectedTextColor   = Accent,
                     unselectedTextColor = Secondary,

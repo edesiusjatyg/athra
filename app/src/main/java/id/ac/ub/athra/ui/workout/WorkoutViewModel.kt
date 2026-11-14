@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.sync.Mutex
 import java.util.concurrent.atomic.AtomicLong
 import java.time.ZoneId
 
@@ -97,7 +96,8 @@ class WorkoutViewModel(
     private val detailRequest = AtomicLong()
     private var catalogJob: Job? = null
     private var historyJob: Job? = null
-    private val mutationMutex = Mutex()
+    private val mutationLock = Any()
+    private var mutationInFlight = false
 
     init {
         observeCatalog()
@@ -476,15 +476,16 @@ class WorkoutViewModel(
         }
     }
 
-    private fun beginMutation(): Boolean {
-        if (!mutationMutex.tryLock()) return false
+    private fun beginMutation(): Boolean = synchronized(mutationLock) {
+        if (mutationInFlight) return@synchronized false
+        mutationInFlight = true
         mutableState.value = mutableState.value.copy(busy = true, error = null)
-        return true
+        true
     }
 
-    private fun endMutation() {
+    private fun endMutation() = synchronized(mutationLock) {
+        mutationInFlight = false
         mutableState.value = mutableState.value.copy(busy = false)
-        mutationMutex.unlock()
     }
 
     private fun fail(error: Throwable) {
