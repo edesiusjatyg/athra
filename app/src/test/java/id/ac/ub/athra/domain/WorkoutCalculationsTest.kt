@@ -141,4 +141,45 @@ class WorkoutCalculationsTest {
         assertEquals(1, result.sessionCount)
         assertEquals(6, result.dailyVolumeKg.size)
     }
+
+    @Test
+    fun analyticsPeriodBoundariesWorkForThirtyAndNinetyDays() {
+        val exercise = Exercise("row", "Row", "Back", "Cable", "")
+        val zone = ZoneId.of("Asia/Jakarta")
+        val now = java.time.LocalDate.of(2026, 11, 14).atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        listOf(30, 90).forEach { days ->
+            val firstDay = java.time.LocalDate.of(2026, 11, 14).minusDays((days - 1).toLong()).atStartOfDay(zone).toInstant().toEpochMilli()
+            val sessions = listOf(
+                AnalyticsInputSession(firstDay - 1, listOf(AnalyticsInputExercise(exercise, listOf(1 to BigDecimal.ONE)))),
+                AnalyticsInputSession(firstDay, listOf(AnalyticsInputExercise(exercise, listOf(1 to BigDecimal.ONE)))),
+            )
+            val result = calculateAnalytics(sessions, now, days, zone)
+            assertEquals(1, result.sessionCount)
+            assertEquals(days, result.dailyVolumeKg.size)
+        }
+    }
+
+    @Test
+    fun setComparisonMatchesByNumberAndLeavesMissingPairsWithoutZeroHistory() {
+        val previous = listOf(
+            WorkoutSet("p1", 1, 8, BigDecimal("25")),
+            WorkoutSet("p2", 2, 8, BigDecimal("30")),
+        )
+        val current = listOf(
+            WorkoutSet("c1", 1, 10, BigDecimal("27.5")),
+            WorkoutSet("c3", 3, 6, BigDecimal.ZERO),
+        )
+        val result = compareSets(current, previous)
+        assertEquals(BigDecimal("2.5"), result[0].weightDeltaKg)
+        assertEquals(2, result[0].repsDelta)
+        assertNull(result[1].previousSet)
+        assertNull(result[1].weightDeltaKg)
+        assertNull(result[1].repsDelta)
+    }
+
+    @Test
+    fun displayedNumbersUseHalfUpRoundingAndStripTrailingZeroes() {
+        assertEquals("1.01", displayNumber(BigDecimal("1.005")))
+        assertEquals("2", displayNumber(BigDecimal("2.000")))
+    }
 }

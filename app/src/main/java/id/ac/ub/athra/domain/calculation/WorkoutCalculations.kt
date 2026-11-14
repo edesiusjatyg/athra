@@ -4,6 +4,7 @@ import id.ac.ub.athra.domain.model.AnalyticsSummary
 import id.ac.ub.athra.domain.model.Exercise
 import id.ac.ub.athra.domain.model.PersonalRecord
 import id.ac.ub.athra.domain.model.PersonalRecordStatus
+import id.ac.ub.athra.domain.model.SetComparison
 import id.ac.ub.athra.domain.model.WorkoutDraft
 import id.ac.ub.athra.domain.model.WorkoutTotals
 import id.ac.ub.athra.domain.model.WeightUnit
@@ -53,6 +54,19 @@ fun personalRecord(exerciseId: String, currentWeightsKg: List<BigDecimal>, previ
         else -> PersonalRecordStatus.BELOW_RECORD
     }
     return PersonalRecord(exerciseId, previousMaxKg, currentMax, status)
+}
+
+fun compareSets(currentSets: List<id.ac.ub.athra.domain.model.WorkoutSet>, previousSets: List<id.ac.ub.athra.domain.model.WorkoutSet>): List<SetComparison> {
+    val previousByNumber = previousSets.associateBy { it.number }
+    return currentSets.map { current ->
+        val previous = previousByNumber[current.number]
+        SetComparison(
+            previousSet = previous,
+            currentSet = current,
+            weightDeltaKg = previous?.let { current.weightKg.subtract(it.weightKg) },
+            repsDelta = previous?.let { current.reps - it.reps },
+        )
+    }
 }
 
 data class AnalyticsInputSession(

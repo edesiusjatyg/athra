@@ -8,6 +8,7 @@ import id.ac.ub.athra.domain.calculation.parseReps
 import id.ac.ub.athra.domain.calculation.parseWeightKg
 import id.ac.ub.athra.domain.calculation.personalRecord
 import id.ac.ub.athra.domain.calculation.calculateAnalytics
+import id.ac.ub.athra.domain.calculation.compareSets
 import id.ac.ub.athra.domain.calculation.AnalyticsInputExercise
 import id.ac.ub.athra.domain.calculation.AnalyticsInputSession
 import id.ac.ub.athra.domain.model.*
@@ -70,16 +71,7 @@ class WorkoutRepository(
 
     suspend fun getReferenceComparisons(userId: String, exerciseId: String, currentSets: List<WorkoutSet>): List<SetComparison> {
         val reference = latestReference(userId, exerciseId) ?: return emptyList()
-        val previousByNumber = reference.sets.associateBy { it.number }
-        return currentSets.map { current ->
-            val previous = previousByNumber[current.number]
-            SetComparison(
-                previousSet = previous,
-                currentSet = current,
-                weightDeltaKg = previous?.let { current.weightKg.subtract(it.weightKg) },
-                repsDelta = previous?.let { current.reps - it.reps },
-            )
-        }
+        return compareSets(currentSets, reference.sets)
     }
 
     suspend fun seedCatalog() = withContext(Dispatchers.IO) {

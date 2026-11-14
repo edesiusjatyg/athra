@@ -114,9 +114,9 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 
 ## 9. Verifikasi dan handoff
 
-- [ ] Ganti tes template dengan unit test domain untuk parsing, volume, konversi, periode, PR, referensi, dan aturan pembulatan.
+- [x] Ganti tes template dengan unit test domain untuk parsing, volume, konversi, periode 7/30/90, PR, referensi, dan aturan pembulatan.
 - [ ] Tambahkan integration test Room untuk transaksi, constraint, migrasi, recovery, idempotensi, dan isolasi UID. (Tes in-memory mencakup constraint, finalisasi, snapshot, retry idempoten, isolasi UID, resume, renumber, serta discard; tes migrasi/recovery belum dibuat. Semua belum berjalan tanpa perangkat.)
-- [ ] Tambahkan Compose/instrumented test untuk alur auth, workout, Summary, History, Analytics, Profile, dan Preferences.
+- [ ] Tambahkan Compose/instrumented test untuk alur auth, workout, Summary, History, Analytics, Profile, dan Preferences. (Dua Compose smoke test mencakup pergantian Sign In/Sign Up dan lanjutkan draft; coverage layar lain belum dibuat.)
 - [ ] Penuhi acceptance criteria AC01–AC42 pada PRD; tambahkan kasus REVIEW setelah process death, pergantian akun saat query berjalan, batas periode 30/90 hari, dan sesi lintas tengah malam.
 - [x] Jalankan dan catat hasil aktual: ./gradlew testDebugUnitTest lintDebug assembleDebug. Ketiganya lulus pada 14 Nov 2026.
 - [ ] Jalankan connectedDebugAndroidTest pada emulator/perangkat dengan Auth Emulator bila diperlukan; catat tes yang tidak dapat dijalankan beserta alasannya. (Empat tes instrumented berhasil dikompilasi; task dijalankan dan gagal dengan `No connected devices!`, sesuai `adb devices -l`.)
