@@ -21,6 +21,7 @@ import id.ac.ub.athra.ui.navigation.AthraNavGraph
 import id.ac.ub.athra.ui.theme.AthraTheme
 import id.ac.ub.athra.ui.workout.WorkoutViewModel
 import id.ac.ub.athra.ui.workout.WorkoutViewModelFactory
+import id.ac.ub.athra.domain.model.WeightUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
                             ).get("workout_${user.uid}", WorkoutViewModel::class.java)
                         }
                         val workoutState by workoutViewModel.state.collectAsState()
+                        val unit by remember(user.uid) { container.unitPreferences.observe(user.uid) }.collectAsState(initial = WeightUnit.KG)
                         val navController = rememberNavController()
                         AthraNavGraph(
                             navController = navController,
@@ -57,6 +59,9 @@ class MainActivity : ComponentActivity() {
                             onStartWorkout = { workoutViewModel.start() },
                             onResumeWorkout = { workoutViewModel.refreshDraft() },
                             onSignOut = authViewModel::signOut,
+                            userEmail = user.email,
+                            weightUnit = unit,
+                            onSaveUnit = { next -> container.unitPreferences.set(user.uid, next) },
                         )
                     }
                 }

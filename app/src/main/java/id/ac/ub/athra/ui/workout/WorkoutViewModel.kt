@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import id.ac.ub.athra.data.repository.WorkoutRepository
 import id.ac.ub.athra.domain.model.AnalyticsSummary
+import id.ac.ub.athra.domain.model.CompletedWorkout
 import id.ac.ub.athra.domain.model.Exercise
 import id.ac.ub.athra.domain.model.WorkoutDraft
 import id.ac.ub.athra.domain.model.WorkoutSession
@@ -64,6 +65,10 @@ class WorkoutViewModel(
         runCatching { repository.analytics(userId, days, ZoneId.systemDefault(), System.currentTimeMillis()) }
             .onSuccess { mutableState.value = mutableState.value.copy(analytics = it) }
             .onFailure { fail(it) }
+    }
+
+    suspend fun loadWorkoutDetail(sessionId: String): CompletedWorkout? = withContext(Dispatchers.IO) {
+        repository.getWorkoutDetail(userId, sessionId)
     }
 
     suspend fun start(name: String? = null): String? = withContext(Dispatchers.IO) {

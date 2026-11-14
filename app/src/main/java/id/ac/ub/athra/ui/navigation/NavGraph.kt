@@ -1,6 +1,7 @@
 package id.ac.ub.athra.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -16,12 +17,17 @@ import id.ac.ub.athra.ui.workout.WorkoutViewModel
 import id.ac.ub.athra.ui.workout.WorkoutFlowScreen
 import id.ac.ub.athra.ui.screens.ProgressScreen
 import id.ac.ub.athra.ui.screens.HistoryScreen
+import id.ac.ub.athra.ui.screens.WorkoutDetailScreen
+import id.ac.ub.athra.ui.screens.PreferencesScreen
 import id.ac.ub.athra.ui.screens.AthraBottomNav
 import id.ac.ub.athra.ui.theme.Background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import id.ac.ub.athra.domain.model.CompletedWorkout
+import id.ac.ub.athra.domain.model.WeightUnit
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,9 +46,13 @@ fun AthraNavGraph(
     onStartWorkout: suspend () -> String?,
     onResumeWorkout: () -> Unit,
     onSignOut: () -> Unit,
+    userEmail: String,
+    weightUnit: WeightUnit,
+    onSaveUnit: suspend (WeightUnit) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var periodDays by rememberSaveable { mutableIntStateOf(7) }
+    var selectedWorkout by remember { mutableStateOf<CompletedWorkout?>(null) }
     NavHost(
         navController = navController,
         startDestination = Routes.Home.route,
@@ -101,6 +111,7 @@ fun AthraNavGraph(
                 onSave = workoutViewModel::save,
                 onDiscard = workoutViewModel::discard,
                 onExit = { navController.popBackStack(Routes.Home.route, false) },
+                weightUnit = weightUnit,
             )
         }
         composable(Routes.Progress.route) {
@@ -121,7 +132,12 @@ fun AthraNavGraph(
         composable(Routes.History.route) {
             HistoryScreen(
                 sessions = workoutState.recentSessions,
-                onOpen = { },
+                onOpen = { sessionId ->
+                    scope.launch {
+                        selectedWorkout = workoutViewModel.loadWorkoutDetail(sessionId)
+                        navController.navigate(Routes.WorkoutDetail.route)
+                    }
+                },
                 onNavigate = { tab ->
                     when (tab) {
                         0 -> navController.navigate(Routes.Home.route) { launchSingleTop = true }
@@ -149,10 +165,22 @@ fun AthraNavGraph(
             ) { insets ->
                 Column(Modifier.padding(insets).padding(20.dp)) {
                     Text(userName, style = MaterialTheme.typography.headlineMedium)
+                    Text(userEmail, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Data latihan tersimpan di perangkat ini.")
+                    TextButton(onClick = { navController.navigate(Routes.Preferences.route) }) { Text("Preferensi satuan") }
                     TextButton(onClick = onSignOut) { Text("Keluar") }
                 }
             }
+        }
+        composable(Routes.WorkoutDetail.route) {
+            WorkoutDetailScreen(selectedWorkout) { navController.popBackStack() }
+        }
+        composable(Routes.Preferences.route) {
+            PreferencesScreen(
+                initialUnit = weightUnit,
+                onBack = { navController.popBackStack() },
+                onSave = { unit -> scope.launch { onSaveUnit(unit); navController.popBackStack() } },
+            )
         }
     }
 }

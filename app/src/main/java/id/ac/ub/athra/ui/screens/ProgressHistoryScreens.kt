@@ -11,9 +11,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import id.ac.ub.athra.domain.calculation.displayNumber
+import id.ac.ub.athra.domain.calculation.calculateTotals
 import id.ac.ub.athra.domain.model.AnalyticsSummary
+import id.ac.ub.athra.domain.model.CompletedWorkout
+import id.ac.ub.athra.domain.model.PersonalRecordStatus
 import id.ac.ub.athra.domain.model.WorkoutSession
 import id.ac.ub.athra.ui.components.AthraCard
 import id.ac.ub.athra.ui.theme.Accent
@@ -66,10 +71,14 @@ fun ProgressScreen(
                 Text("Belum ada data latihan", color = Secondary, modifier = Modifier.padding(vertical = 24.dp))
             } else {
                 val maxValue = analytics.dailyVolumeKg.maxOfOrNull { it.second }?.toFloat()?.coerceAtLeast(1f) ?: 1f
-                Canvas(Modifier.fillMaxWidth().height(180.dp).background(Surface, RoundedCornerShape(16.dp)).padding(12.dp)) {
+                val chartDescription = analytics.dailyVolumeKg.joinToString { (day, value) ->
+                    "${Instant.ofEpochMilli(day).atZone(ZoneId.systemDefault()).toLocalDate()}: ${displayNumber(value)} kg"
+                }
+                Canvas(Modifier.fillMaxWidth().height(180.dp).background(Surface, RoundedCornerShape(16.dp)).padding(12.dp).semantics { contentDescription = chartDescription }) {
                     val gap = 4.dp.toPx()
                     val barWidth = ((size.width - gap * (analytics.dailyVolumeKg.size - 1)) / analytics.dailyVolumeKg.size).coerceAtLeast(1f)
                     analytics.dailyVolumeKg.forEachIndexed { index, entry ->
+                        if (entry.second.signum() == 0) return@forEachIndexed
                         val height = size.height * (entry.second.toFloat() / maxValue)
                         drawRoundRect(
                             color = Accent,
@@ -120,6 +129,66 @@ fun HistoryScreen(sessions: List<WorkoutSession>, onNavigate: (Int) -> Unit, onO
                 }
                 HorizontalDivider(color = Color.DarkGray)
             }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun WorkoutDetailScreen(workout: CompletedWorkout?, onBack: () -> Unit) {
+    Scaffold(
+        containerColor = Background,
+        topBar = { TopAppBar(title = { Text("Detail latihan") }, navigationIcon = { TextButton(onClick = onBack) { Text("Kembali") } }) },
+    ) { insets ->
+        val data = workout
+        if (data == null) Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.Center) {
+            Text("Detail sesi tidak tersedia.", color = Secondary)
+        } else Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp)) {
+            val draft = data.draft
+            val totals = calculateTotals(draft)
+            Text(draft.session.name, style = MaterialTheme.typography.headlineMedium, color = Ink)
+            Text("${totals.setCount} set · ${totals.repCount} repetisi · ${displayNumber(totals.volumeKg)} kg", color = Secondary)
+            Spacer(Modifier.height(20.dp))
+            draft.exercises.forEach { item ->
+                Text(item.exercise.name, style = MaterialTheme.typography.titleLarge, color = Ink)
+                item.sets.forEach { set ->
+                    Text("Set ${set.number} · ${set.reps} repetisi · ${displayNumber(set.weightKg)} kg")
+                }
+                data.personalRecords.firstOrNull { it.exerciseId == item.exercise.id }?.let { record ->
+                    val status = when (record.status) {
+                        PersonalRecordStatus.BASELINE -> "Catatan awal"
+                        PersonalRecordStatus.NEW_RECORD -> "Rekor baru"
+                        PersonalRecordStatus.MATCHED -> "Menyamai rekor"
+                        PersonalRecordStatus.BELOW_RECORD -> "Belum melampaui rekor"
+                    }
+                    Text("$status · ${displayNumber(record.currentMaxKg)} kg", color = Accent)
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun PreferencesScreen(initialUnit: id.ac.ub.athra.domain.model.WeightUnit, onBack: () -> Unit, onSave: (id.ac.ub.athra.domain.model.WeightUnit) -> Unit) {
+    var selected by remember(initialUnit) { mutableStateOf(initialUnit) }
+    Scaffold(
+        containerColor = Background,
+        topBar = { TopAppBar(title = { Text("Preferensi") }, navigationIcon = { TextButton(onClick = onBack) { Text("Batal") } }) },
+    ) { insets ->
+        Column(Modifier.fillMaxSize().padding(insets).padding(20.dp)) {
+            Text("Satuan beban", style = MaterialTheme.typography.titleLarge, color = Ink)
+            Spacer(Modifier.height(8.dp))
+            listOf(id.ac.ub.athra.domain.model.WeightUnit.KG, id.ac.ub.athra.domain.model.WeightUnit.LB).forEach { unit ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = selected == unit, onClick = { selected = unit })
+                    Text(if (unit == id.ac.ub.athra.domain.model.WeightUnit.KG) "Kilogram (kg)" else "Pound (lb)")
+                }
+            }
+            Text("Contoh: 32 kg = 70.55 lb", color = Secondary, modifier = Modifier.padding(top = 8.dp))
+            Spacer(Modifier.weight(1f))
+            Button(onClick = { onSave(selected) }, modifier = Modifier.fillMaxWidth()) { Text("Simpan") }
         }
     }
 }
