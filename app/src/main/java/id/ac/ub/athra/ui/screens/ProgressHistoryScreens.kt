@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -245,7 +246,7 @@ fun WorkoutDetailScreen(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun PreferencesScreen(initialUnit: id.ac.ub.athra.domain.model.WeightUnit, onBack: () -> Unit, onSave: (id.ac.ub.athra.domain.model.WeightUnit) -> Unit) {
-    var selected by remember(initialUnit) { mutableStateOf(initialUnit) }
+    var selected by rememberSaveable(initialUnit) { mutableStateOf(initialUnit) }
     Scaffold(
         containerColor = Background,
         topBar = { TopAppBar(title = { Text("Preferensi") }, navigationIcon = { TextButton(onClick = onBack) { Text("Batal") } }) },
@@ -283,7 +284,7 @@ fun EditProfileScreen(
     onSave: (String) -> Unit,
     busy: Boolean = false,
 ) {
-    var name by remember(initialName) { mutableStateOf(initialName) }
+    var name by rememberSaveable(initialName) { mutableStateOf(initialName) }
     val focusManager = LocalFocusManager.current
     Scaffold(
         containerColor = Background,

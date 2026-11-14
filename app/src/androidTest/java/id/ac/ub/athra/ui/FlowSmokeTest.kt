@@ -3,6 +3,7 @@ package id.ac.ub.athra.ui
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -15,6 +16,7 @@ import id.ac.ub.athra.domain.model.WorkoutExercise
 import id.ac.ub.athra.ui.auth.AuthScreen
 import id.ac.ub.athra.ui.auth.AuthUiState
 import id.ac.ub.athra.ui.screens.HistoryScreen
+import id.ac.ub.athra.ui.screens.HomeScreen
 import id.ac.ub.athra.ui.screens.PreferencesScreen
 import id.ac.ub.athra.ui.screens.ProgressScreen
 import id.ac.ub.athra.ui.screens.PreWorkoutScreen
@@ -53,6 +55,36 @@ class FlowSmokeTest {
         compose.onNodeWithText("Sesi latihan belum selesai").assertIsDisplayed()
         compose.onNodeWithText("Lanjutkan sesi").performClick()
         assertTrue(resumed)
+    }
+
+    @Test
+    fun homeDoesNotOfferStartUntilDraftCheckCompletes() {
+        var started = false
+        compose.setContent {
+            HomeScreen(
+                userName = "Uji",
+                draft = null,
+                recentSessions = listOf(WorkoutSession("done", "user", "Sesi lalu", 1_000, 2_000, SessionStatus.COMPLETED)),
+                analytics = null,
+                draftLoading = true,
+                onStartWorkout = { started = true },
+            )
+        }
+
+        compose.onNodeWithText("Memuat…").assertIsNotEnabled()
+        compose.runOnIdle { assertTrue(!started) }
+    }
+
+    @Test
+    fun preWorkoutHidesStartActionsUntilDraftCheckCompletes() {
+        var started = false
+        compose.setContent {
+            PreWorkoutScreen(loading = true, onBeginSession = { started = true })
+        }
+
+        compose.onNodeWithText("Memeriksa sesi tersimpan…").assertIsDisplayed()
+        assertTrue(compose.onAllNodesWithText("Mulai workout").fetchSemanticsNodes().isEmpty())
+        compose.runOnIdle { assertTrue(!started) }
     }
 
     @Test
@@ -135,5 +167,36 @@ class FlowSmokeTest {
         pendingSave.complete(true)
         compose.waitForIdle()
         compose.onNodeWithText("Simpan set").assertIsDisplayed()
+    }
+
+    @Test
+    fun failedDraftDiscardKeepsWorkoutOpen() {
+        val exercise = Exercise("bench_press", "Bench Press", "Chest", "Barbell", "")
+        val draft = WorkoutDraft(
+            WorkoutSession("session-1", "user-1", "Workout", 1_000L, null, SessionStatus.ACTIVE),
+            listOf(WorkoutExercise(exercise, 0, emptyList())),
+        )
+        var exited = false
+        compose.setContent {
+            WorkoutFlowScreen(
+                draft = draft,
+                state = WorkoutUiState(draft = draft, catalog = listOf(exercise)),
+                onSaveSet = { _, _, _, _, _, _ -> false },
+                onDeleteSet = { _, _ -> },
+                onAddExercise = { _, _ -> },
+                onRemoveExercise = { _, _ -> },
+                onFinish = { false },
+                onResume = {},
+                onSave = { false },
+                onDiscard = {},
+                onDiscardResult = { false },
+                onExit = { exited = true },
+            )
+        }
+
+        compose.onNodeWithText("Buang sesi").performClick()
+        compose.onAllNodesWithText("Buang sesi").get(1).performClick()
+        compose.waitForIdle()
+        compose.runOnIdle { assertTrue(!exited) }
     }
 }

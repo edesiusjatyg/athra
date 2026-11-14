@@ -56,17 +56,17 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 ## 4. Navigasi dan fondasi state UI
 
 - [x] Buat Main graph dengan root Home, Train, Progress, Profile dan bottom navigation yang benar-benar berpindah tab tanpa menggandakan destination.
-- [ ] Buat workout graph untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. (Nested graph Start/Active sudah ada; Library/Filters/Detail masih berupa dialog di Active, Summary memakai status REVIEW pada layar sama.)
+- [x] Buat workout graph untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. (Semua kini route terpisah di nested workout graph.)
 - [x] Tambahkan route History, Workout Detail, Edit Profile, dan Preferences; validasi UID saat membuka detail lewat ID route.
-- [x] Scope satu WorkoutViewModel ke workout graph agar Library, Active, dan Summary membaca sesi yang sama. (Satu instance dimiliki NavBackStackEntry graph; Start dan Active serta dialog Library/Filters/Details dan status REVIEW berbagi state. Layar tersebut belum menjadi route terpisah.)
-- [ ] Gunakan unidirectional data flow, StateFlow, state hoisting, lifecycle-aware collection, serta SavedStateHandle untuk state layar/input sementara yang sesuai. StateFlow dan `collectAsStateWithLifecycle` sudah dipakai; state form memakai `rememberSaveable`, tetapi SavedStateHandle dan audit state hoisting belum selesai.
-- [x] Pertahankan asal navigasi Exercise Details agar Back kembali ke Library atau Active yang benar. Detail gerakan berada dalam dialog bertingkat di Active dan Back mengembalikan katalog.
+- [x] Scope satu WorkoutViewModel ke workout graph agar Library, Active, dan Summary membaca sesi yang sama. (Satu instance dimiliki NavBackStackEntry workout graph dan dipakai seluruh route.)
+- [x] Gunakan unidirectional data flow, StateFlow, state hoisting, lifecycle-aware collection, serta SavedStateHandle untuk state layar/input sementara yang sesuai. Form workout, quick start, pencarian, filter, gerakan aktif, dan draft edit memakai state ViewModel/SavedStateHandle; form non-rahasia lain memakai saveable state.
+- [x] Pertahankan asal navigasi Exercise Details agar Back kembali ke Library atau Active yang benar. Route Detail mengembalikan pengguna ke route asal yang masih ada di back stack.
 - [x] Terapkan Back sesuai state workout: jangan pernah membuang sesi tanpa konfirmasi; Active dapat tetap latihan, kembali dengan draft, atau buang sesi.
 
 ## 5. Workout end-to-end
 
 - [x] Implementasikan Start Workout dan Quick Start: konfirmasi mulai membuat draft atomik dan timer dimulai saat itu; jika draft tersedia, tawarkan lanjutkan atau buang.
-- [x] Implementasikan Library dengan search substring case-insensitive dan filter kelompok otot AND; pertahankan search/filter saat membuka detail lalu kembali. (State dialog saveable; uji rotasi visual belum dilakukan.)
+- [x] Implementasikan Library dengan search substring case-insensitive dan filter kelompok otot AND; pertahankan search/filter saat membuka detail lalu kembali. (State disimpan pada ViewModel/SavedStateHandle; uji rotasi perangkat masih menunggu emulator.)
 - [x] Implementasikan Filters dengan pilihan tunggal, Terapkan, Reset, dan hasil kosong yang tidak menghapus pencarian.
 - [x] Implementasikan Exercise Details beserta nama, kelompok otot, alat, petunjuk, riwayat terakhir, dan aksi tambah.
 - [x] Cegah exercise ID yang sama dibuat dua kali dalam satu sesi; hapus exercise draft dengan konfirmasi jika sudah berisi set.
@@ -106,7 +106,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [x] Ganti mockup dengan data/state aktual; terjemahkan UI utama ke Bahasa Indonesia sambil mempertahankan nama exercise/istilah yang ditetapkan PRD.
 - [x] Sesuaikan tema gelap ATHRA dengan Figma atau token fallback PRD; jangan menyalin elemen status bar/home indicator iOS.
 - [x] Pastikan seluruh kontrol yang terlihat punya aksi yang benar; hilangkan kontrol placeholder dan angka personal hardcoded.
-- [ ] Tangani loading, empty, validasi, network/storage error, retry, detail tidak ditemukan, dan recovery draft sesuai tabel PRD. Empty state, validasi set, retry auth, detail tidak ditemukan, dan recovery draft tersedia; penanganan loading/error untuk detail serta beberapa operasi storage masih perlu dirapikan.
+- [x] Tangani loading, empty, validasi, network/storage error, retry, detail tidak ditemukan, dan recovery draft sesuai tabel PRD. Route Home/Start/Library/Summary/Progress/History/Profile/Workout Detail kini menampilkan state loading/error yang sesuai; retry katalog, detail, analytics, profil, riwayat, dan pemuatan draft tersedia.
 - [ ] Pastikan keyboard tidak menutup input/CTA, layout dapat di-scroll, system insets benar, touch target minimal 48 dp, dan font scale 200% tetap dapat dipakai. Pada Medium_Phone AVD API 37, Home dan input workout tetap dapat dipakai pada font 200%; header Home menumpuk, layar workout dapat di-scroll, dan tombol Simpan set berhasil. Insets saat keyboard software terbuka dan audit target 48 dp masih belum diukur.
 - [ ] Tambahkan label input, content description ikon, dan indikator PR/delta yang tidak hanya mengandalkan warna.
 - [ ] Pastikan query database dan kalkulasi berjalan di luar main thread; batalkan query usang ketika search/periode/akun berubah. (I/O berjalan di Dispatchers.IO dan periode membatalkan request lama; pencarian katalog lokal dan pergantian akun belum punya uji pembatalan khusus.)
