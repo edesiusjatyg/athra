@@ -10,11 +10,11 @@ Perintah dijalankan dengan cache Gradle/Android diarahkan ke `/tmp` dan compiler
 GRADLE_USER_HOME=/tmp/athra-gradle ANDROID_USER_HOME=/tmp/athra-android ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:compileDebugAndroidTestKotlin --no-configuration-cache --console=plain -Pkotlin.compiler.execution.strategy=in-process
 ```
 
-Hasil build terakhir (14 November 2026): **BUILD SUCCESSFUL**. Empat belas unit test domain lulus, termasuk batas Analytics 30/90 hari dan workout yang melewati tengah malam. Lint lulus dan APK debug berhasil dibuat. Input workout memilih keyboard angka/desimal, menangani aksi IME, dan menambahkan inset keyboard ke area scroll. Pengamatan StateFlow di Activity memakai `collectAsStateWithLifecycle`. Lint melaporkan warning dependency versi lebih baru, saran modifier Compose, label Activity redundan, serta resource template yang tidak dipakai; tidak ada lint error.
+Hasil build terakhir (14 November 2026): **BUILD SUCCESSFUL** untuk unit test, lint, connected Android test, dan APK debug. Empat belas unit test domain lulus, termasuk batas Analytics 30/90 hari dan workout yang melewati tengah malam. ViewModel workout kini dimiliki oleh NavBackStackEntry graph dan tetap hidup saat berpindah antar destination di graph. Input workout memilih keyboard angka/desimal, menangani aksi IME, dan menambahkan inset keyboard ke area scroll. Pengamatan StateFlow memakai `collectAsStateWithLifecycle`. Lint melaporkan warning dependency versi lebih baru, saran modifier Compose, label Activity redundan, serta resource template yang tidak dipakai; tidak ada lint error.
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
-Instrumented test dijalankan dengan `:app:connectedDebugAndroidTest` pada 14 November 2026. Hasil XML menunjukkan **10/10 lulus**: empat tes repository Room, satu tes constraint, dan lima Compose smoke test. Perangkat: `emulator-5554`, Medium_Phone AVD, API 37, x86_64. Benchmark fixture 10.000 set mencatat **149 ms**, di bawah target 2 detik; angka ini adalah waktu query/kalkulasi repository Room, bukan pengukuran frame time atau respons UI end-to-end.
+Instrumented test dijalankan dengan `:app:connectedDebugAndroidTest` pada 14 November 2026. Hasil XML terakhir setelah perubahan scope ViewModel menunjukkan **10/10 lulus**: empat tes repository Room, satu tes constraint, dan lima Compose smoke test. Perangkat: `emulator-5554`, Medium_Phone AVD, API 37, x86_64. Benchmark fixture 10.000 set mencatat **148 ms**, di bawah target 2 detik; angka ini adalah waktu query/kalkulasi repository Room, bukan pengukuran frame time atau respons UI end-to-end.
 
 APK juga dipasang dan alur runtime dicoba dengan Firebase Auth Emulator lokal (`demo-athra`, port 9099). Sign in, Home, mulai workout, cari dan pilih Bench Press, simpan 1 set (10 repetisi × 32 kg), Finish, Summary, lalu kembali ke Home dengan satu sesi tersimpan berhasil. Pada lingkungan ini emulator aplikasi diarahkan ke host lokal memakai `adb reverse tcp:9099 tcp:9099` dan host debug `127.0.0.1`. Kondisi offline, rotasi, pemulihan process death, sign up penuh, dan perpindahan antar dua akun belum diverifikasi manual.
 
@@ -49,7 +49,7 @@ Status “implementasi ada” berarti alur/kode ditemukan dalam aplikasi; itu bu
 | AC39 | Workout tersimpan lokal setelah akun disiapkan dan alur online dicoba; mode offline belum diuji. |
 | AC40 | Tes repository bahwa discard menghapus draft beserta child rows lulus pada emulator. |
 | AC41 | Layout dapat discroll; keyboard numerik/desimal dan inset IME dipakai saat input set di API 37. Ukuran layar kecil, touch target, dan font 200% belum diverifikasi. |
-| AC42 | Benchmark fixture 10.000 set lulus dalam 149 ms pada Medium_Phone AVD, API 37, x86_64 (target <2 detik). Ini bukan pengukuran UI frame time. |
+| AC42 | Benchmark fixture 10.000 set lulus dalam 148 ms pada Medium_Phone AVD, API 37, x86_64 (target <2 detik). Ini bukan pengukuran UI frame time. |
 
 ## Teori perkuliahan dan lokasi kode
 

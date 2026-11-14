@@ -53,10 +53,13 @@ class MainActivity : ComponentActivity() {
                     state.user == null -> AuthNavigation(state, authViewModel::signIn, authViewModel::signUp)
                     else -> {
                         val user = state.user!!
+                        val workoutFactory = remember(user.uid) {
+                            WorkoutViewModelFactory(user.uid, container.workoutRepository)
+                        }
                         val workoutViewModel = remember(user.uid) {
                             ViewModelProvider(
                                 this@MainActivity,
-                                WorkoutViewModelFactory(user.uid, container.workoutRepository),
+                                workoutFactory,
                             ).get("workout_${user.uid}", WorkoutViewModel::class.java)
                         }
                         val workoutState by workoutViewModel.state.collectAsStateWithLifecycle()
@@ -68,7 +71,7 @@ class MainActivity : ComponentActivity() {
                             userName = workoutState.profileName.ifBlank { user.displayName.ifBlank { user.email.substringBefore('@') } },
                             workoutState = workoutState,
                             workoutViewModel = workoutViewModel,
-                            onStartWorkout = { workoutViewModel.start() },
+                            workoutViewModelFactory = workoutFactory,
                             onResumeWorkout = { workoutViewModel.refreshDraft() },
                             onSignOut = authViewModel::signOut,
                             userEmail = user.email,

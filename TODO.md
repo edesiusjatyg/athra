@@ -58,7 +58,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [x] Buat Main graph dengan root Home, Train, Progress, Profile dan bottom navigation yang benar-benar berpindah tab tanpa menggandakan destination.
 - [ ] Buat workout graph untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. (Nested graph Start/Active sudah ada; Library/Filters/Detail masih berupa dialog di Active, Summary memakai status REVIEW pada layar sama.)
 - [x] Tambahkan route History, Workout Detail, Edit Profile, dan Preferences; validasi UID saat membuka detail lewat ID route.
-- [ ] Scope satu WorkoutViewModel ke workout graph agar Library, Active, dan Summary membaca sesi yang sama.
+- [x] Scope satu WorkoutViewModel ke workout graph agar Library, Active, dan Summary membaca sesi yang sama. (Satu instance dimiliki NavBackStackEntry graph; Start dan Active serta dialog Library/Filters/Details dan status REVIEW berbagi state. Layar tersebut belum menjadi route terpisah.)
 - [ ] Gunakan unidirectional data flow, StateFlow, state hoisting, lifecycle-aware collection, serta SavedStateHandle untuk state layar/input sementara yang sesuai. StateFlow dan `collectAsStateWithLifecycle` sudah dipakai; state form memakai `rememberSaveable`, tetapi SavedStateHandle dan audit state hoisting belum selesai.
 - [x] Pertahankan asal navigasi Exercise Details agar Back kembali ke Library atau Active yang benar. Detail gerakan berada dalam dialog bertingkat di Active dan Back mengembalikan katalog.
 - [x] Terapkan Back sesuai state workout: jangan pernah membuang sesi tanpa konfirmasi; Active dapat tetap latihan, kembali dengan draft, atau buang sesi.
@@ -120,7 +120,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [ ] Penuhi acceptance criteria AC01–AC42 pada PRD; tes domain untuk batas periode 30/90 hari sudah ada, dan kasus sesi lintas tengah malam kini mencakup durasi serta bucket berdasarkan waktu selesai. Kasus REVIEW setelah process death dan pergantian akun saat query berjalan masih belum diuji.
 - [x] Jalankan dan catat hasil aktual: ./gradlew testDebugUnitTest lintDebug assembleDebug. Ketiganya lulus pada 14 Nov 2026.
 - [x] Jalankan connectedDebugAndroidTest pada emulator/perangkat dengan Auth Emulator bila diperlukan; catat tes yang tidak dapat dijalankan beserta alasannya. (10/10 lulus pada 14 Nov 2026 di Medium_Phone AVD, API 37, x86_64.)
-- [x] Ukur Analytics pada fixture 10.000 set dan catat perangkat serta waktu aktual terhadap target 2 detik. (149 ms pada Medium_Phone AVD, API 37, x86_64; ini mengukur query/kalkulasi repository Room, bukan frame time UI.)
+- [x] Ukur Analytics pada fixture 10.000 set dan catat perangkat serta waktu aktual terhadap target 2 detik. (148 ms pada Medium_Phone AVD, API 37, x86_64; ini mengukur query/kalkulasi repository Room, bukan frame time UI.)
 - [ ] Pasang dan jalankan APK pada emulator/perangkat; verifikasi alur demo, kondisi offline, rotasi, dan state yang dipulihkan. (APK dipasang; sign in melalui Auth Emulator dan alur satu set Bench Press sampai tersimpan di Home berhasil. Offline, rotasi, dan pemulihan setelah process death belum diperiksa.)
 - [ ] Siapkan fixture debug H1/H2 yang dapat di-reset dan tidak aktif di production; buat H3 lewat UI saat demo.
 - [ ] Simpan screenshot runtime nyata untuk alur utama, PR, referensi, analytics, dan validasi. (Screenshot Home, Library, dan Summary tersedia; PR/reference, analytics, dan validasi belum ditangkap.)
