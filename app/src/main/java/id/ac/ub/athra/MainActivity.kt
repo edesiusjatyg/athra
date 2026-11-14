@@ -19,7 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
-import id.ac.ub.athra.ui.auth.AuthScreen
+import id.ac.ub.athra.ui.auth.AuthNavigation
 import id.ac.ub.athra.ui.auth.AuthViewModel
 import id.ac.ub.athra.ui.auth.AuthViewModelFactory
 import id.ac.ub.athra.ui.navigation.AthraNavGraph
@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
                         Button(onClick = authViewModel::retryLocalSetup) { Text("Coba lagi") }
                         Button(onClick = authViewModel::signOut) { Text("Keluar") }
                     }
-                    state.user == null -> AuthScreen(state, authViewModel::signIn, authViewModel::signUp)
+                    state.user == null -> AuthNavigation(state, authViewModel::signIn, authViewModel::signUp)
                     else -> {
                         val user = state.user!!
                         val workoutViewModel = remember(user.uid) {

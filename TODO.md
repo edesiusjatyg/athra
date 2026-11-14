@@ -46,9 +46,9 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 
 ## 3. Autentikasi dan isolasi akun
 
-- [ ] Buat Auth navigation graph dan layar Sign In serta Sign Up dengan validasi, loading, error, dan retry.
-- [ ] Implementasikan daftar email/password Firebase: trim nama/email, validasi email, password minimal 6 karakter, konfirmasi cocok, cegah submit ganda.
-- [ ] Implementasikan login, restore sesi saat cold start, sign out, dan pembersihan state/back stack sebelum berganti akun.
+- [x] Buat Auth navigation graph dan layar Sign In serta Sign Up dengan validasi, loading, error, dan retry.
+- [x] Implementasikan daftar email/password Firebase: trim nama/email, validasi email, password minimal 6 karakter, konfirmasi cocok, cegah submit ganda.
+- [x] Implementasikan login, restore sesi saat cold start, sign out, dan pembersihan state/back stack sebelum berganti akun.
 - [x] Pastikan profil lokal dibuat idempoten berdasarkan UID; tangani retry profil jika akun Firebase berhasil dibuat tetapi penyimpanan profil gagal.
 - [x] Pastikan operasi akun lama yang terlambat selesai tidak dapat mengubah UI akun baru; hentikan Flow lama saat UID berganti.
 - [x] Pastikan tidak ada password/token di Room, DataStore, SavedStateHandle, atau log.

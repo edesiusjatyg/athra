@@ -35,8 +35,14 @@ import id.ac.ub.athra.ui.theme.Secondary
 import id.ac.ub.athra.ui.theme.Surface
 
 @Composable
-fun AuthScreen(state: AuthUiState, onSignIn: (String, String) -> Unit, onSignUp: (String, String, String, String) -> Unit) {
-    var registering by rememberSaveable { mutableStateOf(false) }
+fun AuthScreen(
+    state: AuthUiState,
+    onSignIn: (String, String) -> Unit,
+    onSignUp: (String, String, String, String) -> Unit,
+    startInRegistration: Boolean = false,
+    onSwitchMode: (Boolean) -> Unit = {},
+) {
+    var registering by rememberSaveable { mutableStateOf(startInRegistration) }
     var name by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -86,7 +92,7 @@ fun AuthScreen(state: AuthUiState, onSignIn: (String, String) -> Unit, onSignUp:
             ) {
                 Text(if (state.busy) "Memproses…" else if (registering) "Daftar" else "Masuk", fontWeight = FontWeight.SemiBold)
             }
-            TextButton(onClick = { registering = !registering }) {
+            TextButton(onClick = { registering = !registering; onSwitchMode(registering) }) {
                 Text(
                     if (registering) "Sudah punya akun? Masuk" else "Belum punya akun? Daftar",
                     color = Secondary,
