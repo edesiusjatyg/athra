@@ -1,0 +1,14 @@
+[
+  {"id":"pull_up","name":"Pull Up","muscle":"Back","equipment":"Bodyweight","instructions":"Tarik tubuh hingga dagu melewati palang, lalu turun dengan terkendali."},
+  {"id":"lat_pulldown","name":"Lat Pulldown","muscle":"Back","equipment":"Cable","instructions":"Tarik palang ke dada sambil menjaga badan tetap stabil."},
+  {"id":"barbell_row","name":"Barbell Row","muscle":"Back","equipment":"Barbell","instructions":"Tarik bar ke arah perut dengan punggung tetap netral."},
+  {"id":"bench_press","name":"Bench Press","muscle":"Chest","equipment":"Barbell","instructions":"Turunkan bar ke dada dengan kendali lalu dorong hingga lengan lurus."},
+  {"id":"dumbbell_curl","name":"Dumbbell Curl","muscle":"Arms","equipment":"Dumbbell","instructions":"Tekuk siku untuk mengangkat dumbbell tanpa mengayun badan."},
+  {"id":"squat","name":"Squat","muscle":"Legs","equipment":"Barbell","instructions":"Turun dengan lutut mengikuti arah jari kaki dan punggung netral."},
+  {"id":"deadlift","name":"Deadlift","muscle":"Back","equipment":"Barbell","instructions":"Angkat bar dekat tubuh dengan pinggul dan bahu bergerak bersama."},
+  {"id":"overhead_press","name":"Overhead Press","muscle":"Shoulders","equipment":"Barbell","instructions":"Dorong bar ke atas dari bahu sambil menjaga batang tubuh stabil."},
+  {"id":"hammer_curl","name":"Hammer Curl","muscle":"Arms","equipment":"Dumbbell","instructions":"Angkat dumbbell dengan telapak saling berhadapan dan siku dekat badan."},
+  {"id":"lateral_raise","name":"Lateral Raise","muscle":"Shoulders","equipment":"Dumbbell","instructions":"Angkat lengan ke samping hingga setinggi bahu dengan kendali."},
+  {"id":"crunch","name":"Crunch","muscle":"Core","equipment":"Bodyweight","instructions":"Angkat bahu dari lantai dengan gerakan pendek dan terkontrol."},
+  {"id":"calf_raise","name":"Calf Raise","muscle":"Legs","equipment":"Bodyweight","instructions":"Naikkan tumit setinggi mungkin lalu turunkan perlahan."}
+]

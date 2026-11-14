@@ -41,7 +41,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [ ] Terapkan repository dengan pemeriksaan UID dan kepemilikan parent pada semua akses data pribadi.
 - [ ] Terapkan satu slot draft per UID, maksimal satu sesi ACTIVE/REVIEW per akun, dan operasi atomik untuk perubahan set, finalisasi, serta discard.
 - [x] Tambahkan DataStore dengan preferensi unit terpisah per Firebase UID; akun baru memakai kg.
-- [ ] Buat seed katalog lokal idempoten berisi 12 exercise pada PRD, ID stabil, kelompok otot, alat, dan petunjuk singkat.
+- [x] Buat seed katalog lokal idempoten berisi 12 exercise pada PRD, ID stabil, kelompok otot, alat, dan petunjuk singkat.
 - [ ] Pastikan draft/history tetap tersedia offline setelah sesi Firebase tersimpan; dokumentasikan bahwa data workout lokal tidak tersinkron antarperangkat.
 
 ## 3. Autentikasi dan isolasi akun

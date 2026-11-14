@@ -44,6 +44,9 @@ interface WorkoutDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertSession(session: WorkoutSessionEntity)
 
+    @Query("DELETE FROM workout_sessions WHERE sessionId = :sessionId AND userId = :userId AND status IN ('ACTIVE', 'REVIEW')")
+    suspend fun deleteDraft(userId: String, sessionId: String)
+
     @androidx.room.Update
     suspend fun updateSession(session: WorkoutSessionEntity)
 
@@ -65,17 +68,29 @@ interface WorkoutDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertSessionExercise(exercise: SessionExerciseEntity)
 
+    @Query("UPDATE session_exercises SET position = :position WHERE sessionExerciseId = :id")
+    suspend fun updatePosition(id: String, position: Int)
+
     @Query("DELETE FROM session_exercises WHERE sessionExerciseId = :id")
     suspend fun deleteSessionExercise(id: String)
 
+    @Query("DELETE FROM session_exercises WHERE sessionId = :sessionId AND exerciseId = :exerciseId")
+    suspend fun deleteSessionExercise(sessionId: String, exerciseId: String)
+
     @Query("SELECT * FROM workout_sets WHERE sessionExerciseId = :sessionExerciseId ORDER BY setNumber")
     suspend fun getSets(sessionExerciseId: String): List<WorkoutSetEntity>
+
+    @Query("SELECT * FROM workout_sets WHERE setId = :setId")
+    suspend fun getSet(setId: String): WorkoutSetEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSet(set: WorkoutSetEntity)
 
     @Query("DELETE FROM workout_sets WHERE setId = :setId")
     suspend fun deleteSet(setId: String)
+
+    @Query("UPDATE workout_sets SET setNumber = :number WHERE setId = :setId")
+    suspend fun updateSetNumber(setId: String, number: Int)
 
     @Query("SELECT * FROM personal_record_snapshots WHERE sessionId = :sessionId ORDER BY exerciseId")
     suspend fun getSnapshots(sessionId: String): List<PersonalRecordSnapshotEntity>
