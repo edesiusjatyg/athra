@@ -18,6 +18,9 @@ import id.ac.ub.athra.domain.model.SessionStatus
 import id.ac.ub.athra.domain.model.PersonalRecordStatus
 import id.ac.ub.athra.domain.model.WeightUnit
 import id.ac.ub.athra.domain.model.WorkoutDraft
+import id.ac.ub.athra.domain.time.SystemWorkoutClock
+import id.ac.ub.athra.domain.time.WorkoutClock
+import id.ac.ub.athra.domain.time.elapsedSeconds
 import id.ac.ub.athra.ui.theme.Background
 import kotlinx.coroutines.launch
 
@@ -36,6 +39,7 @@ fun WorkoutFlowScreen(
     onDiscard: suspend (String) -> Unit,
     onExit: () -> Unit,
     weightUnit: WeightUnit = WeightUnit.KG,
+    clock: WorkoutClock = SystemWorkoutClock,
 ) {
     val scope = rememberCoroutineScope()
     var exerciseId by rememberSaveable(draft.session.id) { mutableStateOf(draft.exercises.firstOrNull()?.exercise?.id.orEmpty()) }
@@ -53,15 +57,15 @@ fun WorkoutFlowScreen(
     var pendingRemove by remember { mutableStateOf<id.ac.ub.athra.domain.model.WorkoutExercise?>(null) }
     var confirmDiscard by remember { mutableStateOf(false) }
     var confirmUnsavedFinish by remember { mutableStateOf(false) }
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var now by remember { mutableLongStateOf(clock.nowMillis()) }
     LaunchedEffect(draft.session.startedAt, draft.session.status) {
         while (draft.session.status == SessionStatus.ACTIVE) {
-            now = System.currentTimeMillis()
+            now = clock.nowMillis()
             kotlinx.coroutines.delay(1000)
         }
     }
     val totals = calculateTotals(draft)
-    val elapsed = ((draft.session.endedAt ?: now) - draft.session.startedAt).coerceAtLeast(0) / 1000
+    val elapsed = elapsedSeconds(draft.session.startedAt, draft.session.endedAt ?: now)
     val timer = "%02d:%02d:%02d".format(elapsed / 3600, elapsed % 3600 / 60, elapsed % 60)
     val selected = draft.exercises.firstOrNull { it.exercise.id == exerciseId }
 

@@ -2,6 +2,7 @@ package id.ac.ub.athra.domain
 
 import id.ac.ub.athra.domain.calculation.*
 import id.ac.ub.athra.domain.model.*
+import id.ac.ub.athra.domain.time.elapsedSeconds
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -181,5 +182,11 @@ class WorkoutCalculationsTest {
     fun displayedNumbersUseHalfUpRoundingAndStripTrailingZeroes() {
         assertEquals("1.01", displayNumber(BigDecimal("1.005")))
         assertEquals("2", displayNumber(BigDecimal("2.000")))
+    }
+
+    @Test
+    fun elapsedTimerUsesInjectedTimestampAndNeverGoesNegative() {
+        assertEquals(3_661L, elapsedSeconds(10_000L, 3_671_999L))
+        assertEquals(0L, elapsedSeconds(5_000L, 4_999L))
     }
 }

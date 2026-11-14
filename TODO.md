@@ -74,7 +74,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [x] Pastikan perubahan invalid tidak menimpa set lama. Simpan perubahan persisten sebelum UI mengakui set berhasil.
 - [x] Implementasikan edit/hapus set dengan ID stabil, penomoran ulang atomik, dan total yang selalu dihitung ulang dari data sumber.
 - [x] Hitung set, repetisi, jumlah exercise valid, volume per set/exercise/sesi dari set tersimpan; beban 0 tetap dihitung sebagai set dan repetisi.
-- [ ] Implementasikan timer dari startedAt, tampilan HH:mm:ss, rotasi/background tanpa reset, pemulihan ACTIVE setelah process death, serta clock yang bisa diinjeksi.
+- [x] Implementasikan timer dari startedAt, tampilan HH:mm:ss, rotasi/background tanpa reset, pemulihan ACTIVE setelah process death, serta clock yang bisa diinjeksi. Durasi dan ViewModel menerima clock; uji rotasi/process death masih menunggu perangkat.
 - [x] Implementasikan REVIEW saat Finish: tolak sesi tanpa set valid, bekukan endedAt/durasi, dan tangani perubahan input yang belum disimpan.
 - [x] Buat Summary dengan durasi, exercise, set, repetisi, volume, status PR, kembali untuk koreksi, dan simpan sesi.
 - [x] Finalisasi REVIEW ke COMPLETED dalam satu transaksi Room bersama snapshot PR dan penghapusan slot draft; retry harus idempoten dan tidak menggandakan sesi.

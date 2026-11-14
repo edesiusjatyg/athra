@@ -10,7 +10,7 @@ Perintah dijalankan dengan cache Gradle/Android diarahkan ke `/tmp` dan compiler
 GRADLE_USER_HOME=/tmp/athra-gradle ANDROID_USER_HOME=/tmp/athra-android ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:compileDebugAndroidTestKotlin --no-configuration-cache --console=plain -Pkotlin.compiler.execution.strategy=in-process
 ```
 
-Hasil terakhir: **BUILD SUCCESSFUL**. Dua belas unit test domain lulus, lint lulus, APK debug berhasil dibuat, dan enam test Android (empat integration Room + dua Compose smoke test) berhasil dikompilasi. Lint melaporkan warning dependency versi lebih baru, satu saran modifier Compose, label Activity redundan, serta resource template yang tidak dipakai; tidak ada lint error.
+Hasil terakhir: **BUILD SUCCESSFUL**. Tiga belas unit test domain lulus, lint lulus pada pemeriksaan terakhir, APK debug berhasil dibuat, dan enam test Android (empat integration Room + dua Compose smoke test) berhasil dikompilasi. Lint melaporkan warning dependency versi lebih baru, satu saran modifier Compose, label Activity redundan, serta resource template yang tidak dipakai; tidak ada lint error.
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`.
 

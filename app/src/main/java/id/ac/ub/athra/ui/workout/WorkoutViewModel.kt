@@ -13,6 +13,8 @@ import id.ac.ub.athra.domain.model.WorkoutSession
 import id.ac.ub.athra.domain.model.WeightUnit
 import id.ac.ub.athra.domain.model.PersonalRecord
 import id.ac.ub.athra.domain.model.SessionStatus
+import id.ac.ub.athra.domain.time.SystemWorkoutClock
+import id.ac.ub.athra.domain.time.WorkoutClock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +43,7 @@ data class WorkoutUiState(
 class WorkoutViewModel(
     private val userId: String,
     private val repository: WorkoutRepository,
+    private val clock: WorkoutClock = SystemWorkoutClock,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(WorkoutUiState())
     val state = mutableState.asStateFlow()
@@ -79,14 +82,14 @@ class WorkoutViewModel(
         val requestId = analyticsRequest.incrementAndGet()
         analyticsJob?.cancel()
         analyticsJob = viewModelScope.launch(Dispatchers.IO) {
-            runCatching { repository.analytics(userId, days, ZoneId.systemDefault(), System.currentTimeMillis()) }
+            runCatching { repository.analytics(userId, days, ZoneId.systemDefault(), clock.nowMillis()) }
                 .onSuccess { if (analyticsRequest.get() == requestId) mutableState.value = mutableState.value.copy(analytics = it) }
                 .onFailure { if (analyticsRequest.get() == requestId) fail(it) }
         }
     }
 
     fun refreshHomeAnalytics() = viewModelScope.launch(Dispatchers.IO) {
-        runCatching { repository.analytics(userId, 7, ZoneId.systemDefault(), System.currentTimeMillis(), calendarWeek = true) }
+        runCatching { repository.analytics(userId, 7, ZoneId.systemDefault(), clock.nowMillis(), calendarWeek = true) }
             .onSuccess { mutableState.value = mutableState.value.copy(homeAnalytics = it) }
             .onFailure { fail(it) }
     }
@@ -121,7 +124,7 @@ class WorkoutViewModel(
     }
 
     suspend fun start(name: String? = null): String? = withContext(Dispatchers.IO) {
-        runCatching { repository.startOrResume(userId, name) }
+        runCatching { repository.startOrResume(userId, name, clock.nowMillis()) }
             .onSuccess { mutableState.value = mutableState.value.copy(draft = it, error = null) }
             .onFailure { fail(it) }
             .getOrNull()?.session?.id
@@ -148,7 +151,7 @@ class WorkoutViewModel(
 
     suspend fun finish(sessionId: String): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            val draft = repository.enterReview(userId, sessionId, System.currentTimeMillis())
+            val draft = repository.enterReview(userId, sessionId, clock.nowMillis())
             val records = repository.previewRecords(userId, draft)
             mutableState.value = mutableState.value.copy(draft = draft, personalRecords = records, error = null)
         }.fold(onSuccess = { true }, onFailure = { fail(it); false })
