@@ -6,11 +6,16 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import id.ac.ub.athra.data.local.AppDatabase
+import id.ac.ub.athra.data.auth.AuthRepository
+import id.ac.ub.athra.data.preferences.UnitPreferences
+import id.ac.ub.athra.data.repository.WorkoutRepository
 
 class AthraApplication : Application() {
     lateinit var database: AppDatabase
         private set
     var firebaseAuth: FirebaseAuth? = null
+        private set
+    lateinit var container: AppContainer
         private set
 
     override fun onCreate() {
@@ -34,5 +39,16 @@ class AthraApplication : Application() {
                 }
             }
         }
+        container = AppContainer(
+            authRepository = AuthRepository(firebaseAuth),
+            workoutRepository = WorkoutRepository(database, assets),
+            unitPreferences = UnitPreferences(this),
+        )
     }
 }
+
+data class AppContainer(
+    val authRepository: AuthRepository,
+    val workoutRepository: WorkoutRepository,
+    val unitPreferences: UnitPreferences,
+)
