@@ -20,7 +20,9 @@ class AthraApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        database = Room.databaseBuilder(this, AppDatabase::class.java, "athra.db").build()
+        database = Room.databaseBuilder(this, AppDatabase::class.java, "athra.db")
+            .addCallback(AppDatabase.validationCallback)
+            .build()
 
         val projectId = BuildConfig.FIREBASE_PROJECT_ID
         val appId = BuildConfig.FIREBASE_APP_ID

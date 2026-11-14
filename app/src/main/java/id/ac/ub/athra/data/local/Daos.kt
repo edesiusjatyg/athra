@@ -5,6 +5,36 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
+import java.math.BigDecimal
+
+data class AnalyticsSetRow(
+    val sessionId: String,
+    val endedAt: Long,
+    val exerciseId: String,
+    val name: String,
+    val primaryMuscleGroup: String,
+    val equipment: String,
+    val instructions: String,
+    val reps: Int,
+    val weightKg: BigDecimal,
+)
+
+data class ReferenceSetRow(
+    val sessionId: String,
+    val userId: String,
+    val sessionName: String,
+    val startedAt: Long,
+    val endedAt: Long,
+    val exerciseId: String,
+    val exerciseName: String,
+    val primaryMuscleGroup: String,
+    val equipment: String,
+    val instructions: String,
+    val setId: String,
+    val setNumber: Int,
+    val reps: Int,
+    val weightKg: BigDecimal,
+)
 
 @Dao
 interface ProfileDao {
@@ -32,6 +62,45 @@ interface ExerciseDao {
 
 @Dao
 interface WorkoutDao {
+    @Query("""
+        SELECT s.sessionId AS sessionId, COALESCE(s.endedAt, s.startedAt) AS endedAt, e.exerciseId AS exerciseId,
+            e.name AS name, e.primaryMuscleGroup AS primaryMuscleGroup, e.equipment AS equipment,
+            e.instructions AS instructions, ws.reps AS reps, ws.weightKg AS weightKg
+        FROM workout_sessions s
+        JOIN session_exercises se ON se.sessionId = s.sessionId
+        JOIN exercises e ON e.exerciseId = se.exerciseId
+        JOIN workout_sets ws ON ws.sessionExerciseId = se.sessionExerciseId
+        WHERE s.userId = :userId AND s.status = 'COMPLETED' AND s.endedAt BETWEEN :from AND :to
+        ORDER BY s.endedAt DESC, s.sessionId, se.position, ws.setNumber
+    """)
+    suspend fun getAnalyticsRows(userId: String, from: Long, to: Long): List<AnalyticsSetRow>
+
+    @Query("""
+        SELECT s.sessionId AS sessionId, s.userId AS userId, s.name AS sessionName,
+            s.startedAt AS startedAt, COALESCE(s.endedAt, s.startedAt) AS endedAt, e.exerciseId AS exerciseId,
+            e.name AS exerciseName, e.primaryMuscleGroup AS primaryMuscleGroup,
+            e.equipment AS equipment, e.instructions AS instructions, ws.setId AS setId,
+            ws.setNumber AS setNumber, ws.reps AS reps, ws.weightKg AS weightKg
+        FROM workout_sessions s
+        JOIN session_exercises se ON se.sessionId = s.sessionId
+        JOIN exercises e ON e.exerciseId = se.exerciseId
+        JOIN workout_sets ws ON ws.sessionExerciseId = se.sessionExerciseId
+        WHERE s.userId = :userId AND s.status = 'COMPLETED'
+            AND NOT EXISTS (
+                SELECT 1 FROM workout_sessions newer
+                JOIN session_exercises newerSe ON newerSe.sessionId = newer.sessionId
+                JOIN workout_sets newerSet ON newerSet.sessionExerciseId = newerSe.sessionExerciseId
+                WHERE newer.userId = s.userId AND newer.status = 'COMPLETED'
+                    AND newerSe.exerciseId = se.exerciseId
+                    AND (newer.endedAt > s.endedAt OR
+                        (newer.endedAt = s.endedAt AND
+                            (newer.createdAt > s.createdAt OR
+                                (newer.createdAt = s.createdAt AND newer.sessionId > s.sessionId))))
+            )
+        ORDER BY e.exerciseId, ws.setNumber
+    """)
+    suspend fun getLatestReferenceRows(userId: String): List<ReferenceSetRow>
+
     @Query("SELECT * FROM workout_sessions WHERE sessionId = :sessionId")
     suspend fun getSession(sessionId: String): WorkoutSessionEntity?
 

@@ -41,14 +41,20 @@ class WorkoutRepository(
     }
 
     suspend fun analytics(userId: String, periodDays: Int, zone: java.time.ZoneId, now: Long, calendarWeek: Boolean = false): AnalyticsSummary {
-        val sessions = workout.getCompleted(userId).map { row ->
-            val endTime = row.endedAt ?: row.startedAt
-            val items = workout.getSessionExercises(row.sessionId).mapNotNull { item ->
-                val exercise = exercises.get(item.exerciseId)?.toModel() ?: return@mapNotNull null
-                val sets = workout.getSets(item.sessionExerciseId)
-                AnalyticsInputExercise(exercise, sets.map { it.reps to it.weightKg })
+        require(periodDays in setOf(7, 30, 90))
+        val today = java.time.Instant.ofEpochMilli(now).atZone(zone)
+        val firstDay = if (calendarWeek) today.toLocalDate().minusDays((today.dayOfWeek.value - 1).toLong())
+        else today.toLocalDate().minusDays((periodDays - 1).toLong())
+        val from = firstDay.atStartOfDay(zone).toInstant().toEpochMilli()
+        val rows = workout.getAnalyticsRows(userId, from, now)
+        val sessions = rows.groupBy { it.sessionId }.values.map { sessionRows ->
+            val first = sessionRows.first()
+            val inputs = sessionRows.groupBy { it.exerciseId }.values.map { exerciseRows ->
+                val row = exerciseRows.first()
+                val exercise = Exercise(row.exerciseId, row.name, row.primaryMuscleGroup, row.equipment, row.instructions)
+                AnalyticsInputExercise(exercise, exerciseRows.map { it.reps to it.weightKg })
             }
-            AnalyticsInputSession(endTime, items)
+            AnalyticsInputSession(first.endedAt, inputs)
         }
         return calculateAnalytics(sessions, now, periodDays, zone, calendarWeek)
     }
@@ -151,7 +157,8 @@ class WorkoutRepository(
             ?: error("Set tidak ditemukan.")
         workout.deleteSet(setId)
         val remaining = workout.getSets(parent.sessionExerciseId)
-        remaining.forEachIndexed { index, row -> workout.updateSetNumber(row.setId, -(index + 1)) }
+        val temporaryStart = Math.addExact(remaining.maxOfOrNull { it.setNumber } ?: 0, 1)
+        remaining.forEachIndexed { index, row -> workout.updateSetNumber(row.setId, Math.addExact(temporaryStart, index)) }
         remaining.forEachIndexed { index, row -> workout.updateSetNumber(row.setId, index + 1) }
         loadDraft(userId, sessionId)!!
     }
@@ -226,17 +233,19 @@ class WorkoutRepository(
     }
 
     suspend fun latestReference(userId: String, exerciseId: String): ExerciseReference? {
-        for (session in workout.getCompleted(userId)) {
-            val item = workout.getSessionExercise(session.sessionId, exerciseId) ?: continue
-            val sets = workout.getSets(item.sessionExerciseId).map { it.toModel() }
-            if (sets.isNotEmpty()) {
-                val volume = sets.fold(BigDecimal.ZERO) { total, set ->
-                    total.add(set.weightKg.multiply(BigDecimal.valueOf(set.reps.toLong())))
-                }
-                return ExerciseReference(session.toModel(), sets, volume)
+        return latestReferences(userId)[exerciseId]
+    }
+
+    suspend fun latestReferences(userId: String): Map<String, ExerciseReference> {
+        return workout.getLatestReferenceRows(userId).groupBy { it.exerciseId }.mapValues { (_, rows) ->
+            val first = rows.first()
+            val session = WorkoutSession(first.sessionId, first.userId, first.sessionName, first.startedAt, first.endedAt, SessionStatus.COMPLETED)
+            val sets = rows.map { WorkoutSet(it.setId, it.setNumber, it.reps, it.weightKg) }
+            val volume = sets.fold(BigDecimal.ZERO) { total, set ->
+                total.add(set.weightKg.multiply(BigDecimal.valueOf(set.reps.toLong())))
             }
+            ExerciseReference(session, sets, volume)
         }
-        return null
     }
 
     suspend fun getCompletedWorkout(userId: String, sessionId: String): CompletedWorkout? =

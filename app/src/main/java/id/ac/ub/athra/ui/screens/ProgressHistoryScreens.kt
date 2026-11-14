@@ -38,6 +38,7 @@ import java.util.Locale
 fun ProgressScreen(
     analytics: AnalyticsSummary?,
     periodDays: Int,
+    weightUnit: WeightUnit,
     onPeriodChange: (Int) -> Unit,
     onNavigate: (Int) -> Unit,
 ) {
@@ -64,7 +65,7 @@ fun ProgressScreen(
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Metric("Repetisi", analytics?.repCount?.toString() ?: "0", Modifier.weight(1f))
-                Metric("Volume", "${analytics?.volumeKg?.let(::displayNumber) ?: "0"} kg", Modifier.weight(1f))
+                Metric("Volume", "${analytics?.volumeKg?.let { displayNumber(displayWeight(it, weightUnit)) } ?: "0"} ${weightUnit.name.lowercase()}", Modifier.weight(1f))
             }
             Spacer(Modifier.height(20.dp))
             Text("Volume harian", style = MaterialTheme.typography.titleLarge, color = Ink)
@@ -74,11 +75,11 @@ fun ProgressScreen(
             } else {
                 val maxValue = analytics.dailyVolumeKg.maxOfOrNull { it.second }?.toFloat()?.coerceAtLeast(1f) ?: 1f
                 val chartDescription = analytics.dailyVolumeKg.joinToString { (day, value) ->
-                    "${Instant.ofEpochMilli(day).atZone(ZoneId.systemDefault()).toLocalDate()}: ${displayNumber(value)} kg"
+                    "${Instant.ofEpochMilli(day).atZone(ZoneId.systemDefault()).toLocalDate()}: ${displayNumber(displayWeight(value, weightUnit))} ${weightUnit.name.lowercase()}"
                 }
                 Canvas(Modifier.fillMaxWidth().height(180.dp).background(Surface, RoundedCornerShape(16.dp)).padding(12.dp).semantics { contentDescription = chartDescription }) {
-                    val gap = 4.dp.toPx()
-                    val barWidth = ((size.width - gap * (analytics.dailyVolumeKg.size - 1)) / analytics.dailyVolumeKg.size).coerceAtLeast(1f)
+                    val gap = if (analytics.dailyVolumeKg.size > 45) 0f else 4.dp.toPx()
+                    val barWidth = ((size.width - gap * (analytics.dailyVolumeKg.size - 1)) / analytics.dailyVolumeKg.size).coerceAtLeast(0.5f)
                     analytics.dailyVolumeKg.forEachIndexed { index, entry ->
                         if (entry.second.signum() == 0) return@forEachIndexed
                         val height = size.height * (entry.second.toFloat() / maxValue)

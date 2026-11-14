@@ -28,6 +28,8 @@ import id.ac.ub.athra.domain.model.AnalyticsSummary
 import id.ac.ub.athra.domain.model.WorkoutDraft
 import id.ac.ub.athra.domain.model.WorkoutSession
 import id.ac.ub.athra.domain.calculation.displayNumber
+import id.ac.ub.athra.domain.calculation.displayWeight
+import id.ac.ub.athra.domain.model.WeightUnit
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -45,6 +47,8 @@ fun HomeScreen(
     onResumeWorkout: () -> Unit = {},
     onViewAll: () -> Unit = {},
     onNavigate: (Int) -> Unit = {},
+    onOpenSession: (String) -> Unit = {},
+    weightUnit: WeightUnit = WeightUnit.KG,
 ) {
     Scaffold(
         containerColor = Background,
@@ -60,7 +64,7 @@ fun HomeScreen(
             Spacer(Modifier.height(16.dp))
 
             // ── Top bar ──
-            HomeTopBar()
+            HomeTopBar(userName = userName, onOpenProfile = { onNavigate(3) })
 
             Spacer(Modifier.height(20.dp))
 
@@ -89,7 +93,7 @@ fun HomeScreen(
             Spacer(Modifier.height(24.dp))
 
             // ── This week stats ──
-            ThisWeekSection(analytics)
+            ThisWeekSection(analytics, weightUnit)
 
             Spacer(Modifier.height(24.dp))
 
@@ -100,9 +104,11 @@ fun HomeScreen(
                 Text("Belum ada sesi. Mulai latihan pertamamu.", color = Secondary)
             } else recentSessions.take(3).forEach { session ->
                 RecentSessionRow(
+                    sessionId = session.id,
                     name = session.name,
                     meta = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
                         .format(Instant.ofEpochMilli(session.endedAt ?: session.startedAt).atZone(ZoneId.systemDefault())),
+                    onClick = { onOpenSession(session.id) },
                 )
                 Spacer(Modifier.height(8.dp))
             }
@@ -114,7 +120,7 @@ fun HomeScreen(
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun HomeTopBar() {
+private fun HomeTopBar(userName: String, onOpenProfile: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -145,13 +151,14 @@ private fun HomeTopBar() {
                 ),
             )
         }
-        // Avatar placeholder
         Box(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(Muted),
-        )
+                .background(Muted)
+                .clickable(onClick = onOpenProfile),
+            contentAlignment = Alignment.Center,
+        ) { Text(userName.take(1).uppercase(), color = Ink, style = MaterialTheme.typography.titleMedium) }
     }
 }
 
@@ -198,7 +205,7 @@ private fun NextWorkoutCard(hasDraft: Boolean, onStartWorkout: () -> Unit) {
 // ─── This Week Section ───────────────────────────────────────────────────────
 
 @Composable
-private fun ThisWeekSection(analytics: AnalyticsSummary?) {
+private fun ThisWeekSection(analytics: AnalyticsSummary?, weightUnit: WeightUnit) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -221,7 +228,7 @@ private fun ThisWeekSection(analytics: AnalyticsSummary?) {
         ) {
             StatCard(value = "%02d".format(analytics?.sessionCount ?: 0), label = "Sesi", modifier = Modifier.weight(1f))
             StatCard(value = "%02d".format(analytics?.setCount ?: 0), label = "Set", modifier = Modifier.weight(1f))
-            StatCard(value = analytics?.volumeKg?.let(::displayNumber) ?: "0", label = "Volume · kg", modifier = Modifier.weight(1f))
+            StatCard(value = analytics?.volumeKg?.let { displayNumber(displayWeight(it, weightUnit)) } ?: "0", label = "Volume · ${weightUnit.name.lowercase()}", modifier = Modifier.weight(1f))
         }
     }
 }
@@ -250,14 +257,14 @@ private fun StatCard(value: String, label: String, modifier: Modifier = Modifier
 // ─── Recent Session Row ──────────────────────────────────────────────────────
 
 @Composable
-private fun RecentSessionRow(name: String, meta: String) {
+private fun RecentSessionRow(sessionId: String, name: String, meta: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(CardShape)
             .background(Surface)
             .border(1.dp, Border, CardShape)
-            .clickable {}
+            .clickable(onClick = onClick)
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,

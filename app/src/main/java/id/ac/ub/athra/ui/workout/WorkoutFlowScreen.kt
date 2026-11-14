@@ -162,6 +162,9 @@ fun WorkoutFlowScreen(
                             }
                         }
                         if (selected.sets.isNotEmpty()) {
+                            val setDelta = selected.sets.size - reference.sets.size
+                            val setSign = if (setDelta > 0) "+" else ""
+                            Text("Set: ${selected.sets.size} vs ${reference.sets.size} · Δ $setSign$setDelta")
                             val currentVolume = selected.sets.fold(java.math.BigDecimal.ZERO) { total, set ->
                                 total.add(set.weightKg.multiply(java.math.BigDecimal.valueOf(set.reps.toLong())))
                             }

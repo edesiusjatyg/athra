@@ -67,8 +67,8 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 
 - [ ] Implementasikan Start Workout dan Quick Start: konfirmasi mulai membuat draft atomik dan timer dimulai saat itu; jika draft tersedia, tawarkan lanjutkan atau buang.
 - [ ] Implementasikan Library dengan search substring case-insensitive dan filter kelompok otot AND; pertahankan search/filter saat membuka detail lalu kembali. (Pencarian, filter, dan detail gerakan tersedia di dialog workout; audit rotasi/Back masih perlu.)
-- [ ] Implementasikan Filters dengan pilihan tunggal, Terapkan, Reset, dan hasil kosong yang tidak menghapus pencarian.
-- [ ] Implementasikan Exercise Details beserta nama, kelompok otot, alat, petunjuk, riwayat terakhir, dan aksi tambah.
+- [x] Implementasikan Filters dengan pilihan tunggal, Terapkan, Reset, dan hasil kosong yang tidak menghapus pencarian.
+- [x] Implementasikan Exercise Details beserta nama, kelompok otot, alat, petunjuk, riwayat terakhir, dan aksi tambah.
 - [x] Cegah exercise ID yang sama dibuat dua kali dalam satu sesi; hapus exercise draft dengan konfirmasi jika sudah berisi set.
 - [x] Implementasikan input dan simpan set: repetisi integer > 0; beban >= 0; terima koma/titik sebagai desimal; tolak kosong, negatif, format salah, NaN/infinity, dan overflow.
 - [x] Pastikan perubahan invalid tidak menimpa set lama. Simpan perubahan persisten sebelum UI mengakui set berhasil.
@@ -87,7 +87,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [x] Hitung preview PR pada Summary dan simpan previousMax, currentMax, status, serta exercise ID sebagai snapshot final.
 - [x] Tampilkan snapshot PR tetap pada Workout Detail; sesi lama tidak berubah ketika rekor baru tercapai.
 - [x] Ambil sesi exercise COMPLETED terbaru untuk referensi secara deterministik; jangan salah memakai sesi dengan beban maksimum.
-- [ ] Bandingkan set berdasarkan nomor, tampilkan delta beban/repetisi, jumlah set, dan volume hanya jika ada set valid saat ini.
+- [x] Bandingkan set berdasarkan nomor, tampilkan delta beban/repetisi, jumlah set, dan volume hanya jika ada set valid saat ini.
 - [x] Tampilkan Tidak ada pembanding untuk set tanpa pasangan dan Belum ada riwayat jika belum ada sesi historis; jangan memakai nol sebagai riwayat fiktif.
 
 ## 7. Analytics, profil, preferensi, dan riwayat
@@ -97,29 +97,29 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [x] Implementasikan empty state tanpa data palsu; sesi dengan beban nol tetap menampilkan sesi/set/repetisi dan volume nol.
 - [x] Implementasikan Home dari data akun: ringkasan minggu kalender Senin–sekarang dan tiga sesi terbaru; hilangkan streak, target, atau rekomendasi yang tidak didukung data.
 - [x] Implementasikan Profile, Edit Profile (hanya nama, trim, email read-only), sign out, dan ringkasan akun aktual.
-- [ ] Implementasikan Preferences kg/lb per UID dengan preview 32 kg, penyimpanan eksplisit, pembatalan Back, dan konfirmasi jika ada input set yang belum disimpan.
-- [ ] Simpan beban dasar sebagai kg; konversi lb memakai 0.45359237 hanya pada batas input/tampilan. Mengganti unit berulang atau membuka lalu menyimpan set tanpa perubahan tidak boleh mengubah nilai dasar.
+- [x] Implementasikan Preferences kg/lb per UID dengan preview 32 kg, penyimpanan eksplisit, pembatalan Back, dan konfirmasi jika ada input set yang belum disimpan. Layar preferences tidak dapat dibuka dari sesi aktif; sesi aktif memberi konfirmasi sebelum input belum disimpan dibuang saat Finish.
+- [x] Simpan beban dasar sebagai kg; konversi lb memakai 0.45359237 hanya pada batas input/tampilan. Mengganti unit berulang atau membuka lalu menyimpan set tanpa perubahan tidak boleh mengubah nilai dasar.
 - [x] Implementasikan Workout History terbaru dahulu dan Workout Detail read-only, lengkap dengan set, volume, durasi, dan snapshot PR.
 
 ## 8. UI, aksesibilitas, dan keandalan
 
-- [ ] Ganti mockup dengan data/state aktual; terjemahkan UI utama ke Bahasa Indonesia sambil mempertahankan nama exercise/istilah yang ditetapkan PRD.
+- [x] Ganti mockup dengan data/state aktual; terjemahkan UI utama ke Bahasa Indonesia sambil mempertahankan nama exercise/istilah yang ditetapkan PRD.
 - [ ] Sesuaikan tema gelap ATHRA dengan Figma atau token fallback PRD; jangan menyalin elemen status bar/home indicator iOS.
-- [ ] Pastikan seluruh kontrol yang terlihat punya aksi yang benar; hilangkan kontrol placeholder dan angka personal hardcoded.
+- [x] Pastikan seluruh kontrol yang terlihat punya aksi yang benar; hilangkan kontrol placeholder dan angka personal hardcoded.
 - [ ] Tangani loading, empty, validasi, network/storage error, retry, detail tidak ditemukan, dan recovery draft sesuai tabel PRD.
 - [ ] Pastikan keyboard tidak menutup input/CTA, layout dapat di-scroll, system insets benar, touch target minimal 48 dp, dan font scale 200% tetap dapat dipakai.
 - [ ] Tambahkan label input, content description ikon, dan indikator PR/delta yang tidak hanya mengandalkan warna.
-- [ ] Pastikan query database dan kalkulasi berjalan di luar main thread; batalkan query usang ketika search/periode/akun berubah.
+- [ ] Pastikan query database dan kalkulasi berjalan di luar main thread; batalkan query usang ketika search/periode/akun berubah. (I/O berjalan di Dispatchers.IO dan periode membatalkan request lama; pencarian katalog lokal dan pergantian akun belum punya uji pembatalan khusus.)
 - [ ] Verifikasi rotasi, background/foreground, process death, retry, pergantian akun, dan transaksi parsial tanpa kehilangan set yang tersimpan.
 
 ## 9. Verifikasi dan handoff
 
 - [ ] Ganti tes template dengan unit test domain untuk parsing, volume, konversi, periode, PR, referensi, dan aturan pembulatan.
-- [ ] Tambahkan integration test Room untuk transaksi, constraint, migrasi, recovery, idempotensi, dan isolasi UID. (Tes in-memory mencakup finalisasi, snapshot, retry idempoten, isolasi UID, resume, serta discard; tes constraint/migrasi/recovery belum dibuat.)
+- [ ] Tambahkan integration test Room untuk transaksi, constraint, migrasi, recovery, idempotensi, dan isolasi UID. (Tes in-memory mencakup constraint, finalisasi, snapshot, retry idempoten, isolasi UID, resume, renumber, serta discard; tes migrasi/recovery belum dibuat. Semua belum berjalan tanpa perangkat.)
 - [ ] Tambahkan Compose/instrumented test untuk alur auth, workout, Summary, History, Analytics, Profile, dan Preferences.
 - [ ] Penuhi acceptance criteria AC01–AC42 pada PRD; tambahkan kasus REVIEW setelah process death, pergantian akun saat query berjalan, batas periode 30/90 hari, dan sesi lintas tengah malam.
 - [x] Jalankan dan catat hasil aktual: ./gradlew testDebugUnitTest lintDebug assembleDebug. Ketiganya lulus pada 14 Nov 2026.
-- [ ] Jalankan connectedDebugAndroidTest pada emulator/perangkat dengan Auth Emulator bila diperlukan; catat tes yang tidak dapat dijalankan beserta alasannya. (Tes instrumented berhasil dikompilasi; belum dijalankan karena `adb devices -l` tidak menemukan perangkat/emulator.)
+- [ ] Jalankan connectedDebugAndroidTest pada emulator/perangkat dengan Auth Emulator bila diperlukan; catat tes yang tidak dapat dijalankan beserta alasannya. (Empat tes instrumented berhasil dikompilasi; task dijalankan dan gagal dengan `No connected devices!`, sesuai `adb devices -l`.)
 - [ ] Ukur Analytics pada fixture 10.000 set dan catat perangkat serta waktu aktual terhadap target 2 detik.
 - [ ] Pasang dan jalankan APK pada emulator/perangkat; verifikasi alur demo, kondisi offline, rotasi, dan state yang dipulihkan.
 - [ ] Siapkan fixture debug H1/H2 yang dapat di-reset dan tidak aktif di production; buat H3 lewat UI saat demo.

@@ -61,4 +61,4 @@ Setelah akun terautentikasi, katalog, profil lokal, sesi, set, riwayat, PR, anal
 
 ## Status verifikasi
 
-Lihat [TODO.md](TODO.md) untuk item implementasi dan [PRD.md](PRD.md) untuk acceptance criteria. Jangan anggap fitur sebagai terverifikasi pada perangkat hanya karena build berhasil. Hasil unit/instrumented test, pemasangan emulator, screenshot runtime, dan pengukuran analytics perlu dicatat setelah benar-benar dijalankan.
+Lihat [TODO.md](TODO.md) untuk item implementasi, [PRD.md](PRD.md) untuk acceptance criteria, dan [VERIFICATION.md](VERIFICATION.md) untuk hasil aktual build/test serta status AC. Instrumented test sudah dikompilasi, tetapi butuh emulator/perangkat untuk dijalankan. Screenshot runtime dan pengukuran analytics 10.000 set belum tersedia. Query analytics dan referensi memakai query Room terkelompok untuk menghindari pemuatan N+1.

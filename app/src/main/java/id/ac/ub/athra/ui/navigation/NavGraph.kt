@@ -55,6 +55,12 @@ fun AthraNavGraph(
     val scope = rememberCoroutineScope()
     var periodDays by rememberSaveable { mutableIntStateOf(7) }
     var selectedWorkout by remember { mutableStateOf<CompletedWorkout?>(null) }
+    fun openWorkoutDetail(sessionId: String) {
+        scope.launch {
+            selectedWorkout = workoutViewModel.loadWorkoutDetail(sessionId)
+            navController.navigate(Routes.WorkoutDetail.route)
+        }
+    }
     NavHost(
         navController = navController,
         startDestination = Routes.Home.route,
@@ -71,6 +77,8 @@ fun AthraNavGraph(
                     workoutState.draft?.let { navController.navigate(Routes.LiveWorkout.route) }
                 },
                 onViewAll = { navController.navigate(Routes.History.route) },
+                onOpenSession = ::openWorkoutDetail,
+                weightUnit = weightUnit,
                 onNavigate = { tab -> navController.navigateTab(tab) },
             )
             // History is opened from the Home section action and shares the local completed-session stream.
@@ -115,6 +123,7 @@ fun AthraNavGraph(
             ProgressScreen(
                 analytics = workoutState.analytics,
                 periodDays = periodDays,
+                weightUnit = weightUnit,
                 onPeriodChange = { days -> periodDays = days; workoutViewModel.refreshAnalytics(days) },
                 onNavigate = { tab -> if (tab != 2) navController.navigateTab(tab) },
             )
@@ -122,12 +131,7 @@ fun AthraNavGraph(
         composable(Routes.History.route) {
             HistoryScreen(
                 sessions = workoutState.recentSessions,
-                onOpen = { sessionId ->
-                    scope.launch {
-                        selectedWorkout = workoutViewModel.loadWorkoutDetail(sessionId)
-                        navController.navigate(Routes.WorkoutDetail.route)
-                    }
-                },
+                onOpen = ::openWorkoutDetail,
                 onNavigate = { tab -> navController.navigateTab(tab) },
             )
         }

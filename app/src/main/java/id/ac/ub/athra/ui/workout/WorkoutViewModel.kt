@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import java.util.concurrent.atomic.AtomicLong
 import java.time.ZoneId
 
 data class WorkoutUiState(
@@ -42,6 +44,8 @@ class WorkoutViewModel(
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(WorkoutUiState())
     val state = mutableState.asStateFlow()
+    private val analyticsRequest = AtomicLong()
+    private var analyticsJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -71,10 +75,14 @@ class WorkoutViewModel(
             .onFailure { fail(it) }
     }
 
-    fun refreshAnalytics(days: Int = 7) = viewModelScope.launch(Dispatchers.IO) {
-        runCatching { repository.analytics(userId, days, ZoneId.systemDefault(), System.currentTimeMillis()) }
-            .onSuccess { mutableState.value = mutableState.value.copy(analytics = it) }
-            .onFailure { fail(it) }
+    fun refreshAnalytics(days: Int = 7) {
+        val requestId = analyticsRequest.incrementAndGet()
+        analyticsJob?.cancel()
+        analyticsJob = viewModelScope.launch(Dispatchers.IO) {
+            runCatching { repository.analytics(userId, days, ZoneId.systemDefault(), System.currentTimeMillis()) }
+                .onSuccess { if (analyticsRequest.get() == requestId) mutableState.value = mutableState.value.copy(analytics = it) }
+                .onFailure { if (analyticsRequest.get() == requestId) fail(it) }
+        }
     }
 
     fun refreshHomeAnalytics() = viewModelScope.launch(Dispatchers.IO) {
@@ -88,6 +96,12 @@ class WorkoutViewModel(
             .onSuccess { profile ->
                 if (profile != null) mutableState.value = mutableState.value.copy(profileName = profile.displayName, profileEmail = profile.email)
             }
+            .onFailure { fail(it) }
+    }
+
+    fun refreshReferences() = viewModelScope.launch(Dispatchers.IO) {
+        runCatching { referenceMap(mutableState.value.catalog) }
+            .onSuccess { mutableState.value = mutableState.value.copy(exerciseReferences = it) }
             .onFailure { fail(it) }
     }
 
@@ -146,6 +160,7 @@ class WorkoutViewModel(
         repository.finalizeWorkout(userId, sessionId)
         refreshHomeAnalytics()
         refreshAnalytics()
+        refreshReferences()
         null
     }
 
@@ -155,12 +170,8 @@ class WorkoutViewModel(
     }
 
     private suspend fun mutate(block: suspend () -> WorkoutDraft?): Unit = withContext(Dispatchers.IO) {
-        runCatching {
-            val draft = block()
-            val references = referenceMap(draft?.exercises?.map { it.exercise }.orEmpty())
-            draft to references
-        }
-            .onSuccess { (draft, references) -> mutableState.value = mutableState.value.copy(draft = draft, exerciseReferences = references, error = null) }
+        runCatching { block() }
+            .onSuccess { draft -> mutableState.value = mutableState.value.copy(draft = draft, error = null) }
             .onFailure { fail(it) }
         Unit
     }
@@ -169,10 +180,9 @@ class WorkoutViewModel(
         runCatching {
             val result = block()
             val draft = repository.getDraft(userId)
-            val references = referenceMap(draft?.exercises?.map { it.exercise }.orEmpty())
-            Triple(result, draft, references)
+            result to draft
         }.fold(
-            onSuccess = { (_, draft, references) -> mutableState.value = mutableState.value.copy(draft = draft, exerciseReferences = references, error = null); true },
+            onSuccess = { (_, draft) -> mutableState.value = mutableState.value.copy(draft = draft, error = null); true },
             onFailure = { fail(it); false },
         )
     }
@@ -182,10 +192,8 @@ class WorkoutViewModel(
     }
 
     private suspend fun referenceMap(draftExercises: List<Exercise>): Map<String, id.ac.ub.athra.domain.model.ExerciseReference> {
-        val exercises = (mutableState.value.catalog + draftExercises).distinctBy { it.id }
-        return exercises.mapNotNull { exercise ->
-            repository.latestReference(userId, exercise.id)?.let { exercise.id to it }
-        }.toMap()
+        val knownIds = (mutableState.value.catalog + draftExercises).map { it.id }.toSet()
+        return repository.latestReferences(userId).filterKeys { it in knownIds }
     }
 }
 

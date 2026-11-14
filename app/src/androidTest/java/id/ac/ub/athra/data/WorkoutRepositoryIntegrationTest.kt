@@ -27,6 +27,7 @@ class WorkoutRepositoryIntegrationTest {
     fun createDatabase() {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+            .addCallback(AppDatabase.validationCallback)
             .allowMainThreadQueries()
             .build()
         repository = WorkoutRepository(database, context.assets)
@@ -71,9 +72,12 @@ class WorkoutRepositoryIntegrationTest {
         val first = repository.startOrResume("user-a", "Workout", now = 1_000L)
         repository.addExercise("user-a", first.session.id, "squat")
         repository.saveSet("user-a", first.session.id, "squat", null, "5", "0", WeightUnit.KG)
+        repository.saveSet("user-a", first.session.id, "squat", null, "5", "20", WeightUnit.KG)
         val resumed = repository.startOrResume("user-a", "Ignored", now = 9_000L)
         assertEquals(first.session.id, resumed.session.id)
-        assertEquals(1, resumed.exercises.single().sets.size)
+        assertEquals(2, resumed.exercises.single().sets.size)
+        repository.deleteSet("user-a", first.session.id, resumed.exercises.single().sets.first().id)
+        assertEquals(1, repository.getDraft("user-a")?.exercises?.single()?.sets?.single()?.number)
         repository.discard("user-a", first.session.id)
         assertNull(repository.getDraft("user-a"))
         assertEquals(0, repository.analytics("user-a", 7, java.time.ZoneId.of("UTC"), 10_000L).sessionCount)
