@@ -115,16 +115,16 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 ## 9. Verifikasi dan handoff
 
 - [x] Ganti tes template dengan unit test domain untuk parsing, volume, konversi, periode 7/30/90, PR, referensi, dan aturan pembulatan.
-- [ ] Tambahkan integration test Room untuk transaksi, constraint, migrasi, recovery, idempotensi, dan isolasi UID. (Tes in-memory mencakup constraint, finalisasi, snapshot, retry idempoten, isolasi UID, resume, renumber, discard, dan fixture analytics 10.000 set; tes migrasi/recovery belum dibuat. Semua belum berjalan tanpa perangkat.)
-- [ ] Tambahkan Compose/instrumented test untuk alur auth, workout, Summary, History, Analytics, Profile, dan Preferences. (Lima Compose smoke test mencakup auth, lanjutkan draft, periode analytics, pembukaan riwayat, dan penyimpanan unit; Profile/Edit Profile, Summary, dan alur set belum dites.)
-- [ ] Penuhi acceptance criteria AC01–AC42 pada PRD; tambahkan kasus REVIEW setelah process death, pergantian akun saat query berjalan, batas periode 30/90 hari, dan sesi lintas tengah malam.
+- [ ] Tambahkan integration test Room untuk transaksi, constraint, migrasi, recovery, idempotensi, dan isolasi UID. (Empat tes repository dan satu tes constraint lulus pada emulator; cakupan migrasi dan recovery eksplisit belum dibuat.)
+- [ ] Tambahkan Compose/instrumented test untuk alur auth, workout, Summary, History, Analytics, Profile, dan Preferences. (Lima Compose smoke test lulus: auth screen, lanjutkan draft, periode analytics, pembukaan riwayat, dan penyimpanan unit. Profile/Edit Profile, Summary, dan alur set belum masuk Compose test.)
+- [ ] Penuhi acceptance criteria AC01–AC42 pada PRD; tes domain untuk batas periode 30/90 hari sudah ada, dan kasus sesi lintas tengah malam kini mencakup durasi serta bucket berdasarkan waktu selesai. Kasus REVIEW setelah process death dan pergantian akun saat query berjalan masih belum diuji.
 - [x] Jalankan dan catat hasil aktual: ./gradlew testDebugUnitTest lintDebug assembleDebug. Ketiganya lulus pada 14 Nov 2026.
-- [ ] Jalankan connectedDebugAndroidTest pada emulator/perangkat dengan Auth Emulator bila diperlukan; catat tes yang tidak dapat dijalankan beserta alasannya. (Sepuluh tes Android berhasil dikompilasi; task dijalankan dan gagal dengan `No connected devices!`, sesuai `adb devices -l`.)
-- [ ] Ukur Analytics pada fixture 10.000 set dan catat perangkat serta waktu aktual terhadap target 2 detik. (Tes benchmark dan log waktu ditambahkan; belum dapat dijalankan tanpa emulator.)
-- [ ] Pasang dan jalankan APK pada emulator/perangkat; verifikasi alur demo, kondisi offline, rotasi, dan state yang dipulihkan.
+- [x] Jalankan connectedDebugAndroidTest pada emulator/perangkat dengan Auth Emulator bila diperlukan; catat tes yang tidak dapat dijalankan beserta alasannya. (10/10 lulus pada 14 Nov 2026 di Medium_Phone AVD, API 37, x86_64.)
+- [x] Ukur Analytics pada fixture 10.000 set dan catat perangkat serta waktu aktual terhadap target 2 detik. (149 ms pada Medium_Phone AVD, API 37, x86_64; ini mengukur query/kalkulasi repository Room, bukan frame time UI.)
+- [ ] Pasang dan jalankan APK pada emulator/perangkat; verifikasi alur demo, kondisi offline, rotasi, dan state yang dipulihkan. (APK dipasang; sign in melalui Auth Emulator dan alur satu set Bench Press sampai tersimpan di Home berhasil. Offline, rotasi, dan pemulihan setelah process death belum diperiksa.)
 - [ ] Siapkan fixture debug H1/H2 yang dapat di-reset dan tidak aktif di production; buat H3 lewat UI saat demo.
-- [ ] Simpan screenshot runtime nyata untuk alur utama, PR, referensi, analytics, dan validasi.
-- [ ] Lengkapi README, path APK, hasil tes, daftar acceptance lulus/gagal/belum dijalankan, lima teori perkuliahan beserta lokasi kode, dan kendala eksternal Firebase production. (README, APK path, acceptance mapping, teori, dan prasyarat Firebase dicatat di README/VERIFICATION; bukti runtime belum tersedia.)
+- [ ] Simpan screenshot runtime nyata untuk alur utama, PR, referensi, analytics, dan validasi. (Screenshot Home, Library, dan Summary tersedia; PR/reference, analytics, dan validasi belum ditangkap.)
+- [ ] Lengkapi README, path APK, hasil tes, daftar acceptance lulus/gagal/belum dijalankan, lima teori perkuliahan beserta lokasi kode, dan kendala eksternal Firebase production. (README, APK path, acceptance mapping, teori, dan prasyarat Firebase dicatat di README/VERIFICATION; bukti runtime kini tersedia sebagian.)
 - [ ] Pastikan demo, laporan, README, screenshot, dan implementasi menjelaskan perilaku yang sama; jangan klaim fitur atau verifikasi yang belum dilakukan.
 
 ## Definition of Done

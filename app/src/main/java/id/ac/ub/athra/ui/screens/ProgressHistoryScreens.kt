@@ -2,6 +2,7 @@ package id.ac.ub.athra.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import id.ac.ub.athra.domain.calculation.displayNumber
@@ -188,8 +190,15 @@ fun PreferencesScreen(initialUnit: id.ac.ub.athra.domain.model.WeightUnit, onBac
             Text("Satuan beban", style = MaterialTheme.typography.titleLarge, color = Ink)
             Spacer(Modifier.height(8.dp))
             listOf(id.ac.ub.athra.domain.model.WeightUnit.KG, id.ac.ub.athra.domain.model.WeightUnit.LB).forEach { unit ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = selected == unit, onClick = { selected = unit })
+                Row(
+                    modifier = Modifier.fillMaxWidth().selectable(
+                        selected = selected == unit,
+                        onClick = { selected = unit },
+                        role = Role.RadioButton,
+                    ),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = selected == unit, onClick = null)
                     Text(if (unit == id.ac.ub.athra.domain.model.WeightUnit.KG) "Kilogram (kg)" else "Pound (lb)")
                 }
             }

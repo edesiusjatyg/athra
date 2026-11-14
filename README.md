@@ -61,4 +61,4 @@ Setelah akun terautentikasi, katalog, profil lokal, sesi, set, riwayat, PR, anal
 
 ## Status verifikasi
 
-Lihat [TODO.md](TODO.md) untuk item implementasi, [PRD.md](PRD.md) untuk acceptance criteria, dan [VERIFICATION.md](VERIFICATION.md) untuk hasil aktual build/test serta status AC. Instrumented test sudah dikompilasi, tetapi butuh emulator/perangkat untuk dijalankan. Screenshot runtime dan pengukuran analytics 10.000 set belum tersedia. Query analytics dan referensi memakai query Room terkelompok untuk menghindari pemuatan N+1.
+Lihat [TODO.md](TODO.md) untuk item implementasi, [PRD.md](PRD.md) untuk acceptance criteria, dan [VERIFICATION.md](VERIFICATION.md) untuk hasil build/test serta status AC. Pada 14 November 2026, 10/10 instrumented test lulus di Medium_Phone AVD API 37; fixture analytics 10.000 set tercatat 149 ms. Screenshot runtime Home, Library, dan Summary ada di `screenshots/runtime/`. Verifikasi offline, rotasi, pemulihan process death, dan beberapa acceptance UI masih terbuka. Query analytics dan referensi memakai query Room terkelompok untuk menghindari pemuatan N+1.

@@ -161,6 +161,25 @@ class WorkoutCalculationsTest {
     }
 
     @Test
+    fun workoutCrossingMidnightUsesElapsedTimeAndCompletionDayBucket() {
+        val exercise = Exercise("row", "Row", "Back", "Cable", "")
+        val zone = ZoneId.of("Asia/Jakarta")
+        val start = java.time.LocalDate.of(2026, 11, 13).atTime(23, 59, 30).atZone(zone).toInstant().toEpochMilli()
+        val endedAt = java.time.LocalDate.of(2026, 11, 14).atTime(0, 2, 0).atZone(zone).toInstant().toEpochMilli()
+        val result = calculateAnalytics(
+            listOf(AnalyticsInputSession(endedAt, listOf(AnalyticsInputExercise(exercise, listOf(10 to BigDecimal("5")))))),
+            endedAt,
+            7,
+            zone,
+        )
+        val completionDay = java.time.LocalDate.of(2026, 11, 14).atStartOfDay(zone).toInstant().toEpochMilli()
+
+        assertEquals(150L, elapsedSeconds(start, endedAt))
+        assertEquals(1, result.sessionCount)
+        assertEquals(BigDecimal("50"), result.dailyVolumeKg.single { it.first == completionDay }.second)
+    }
+
+    @Test
     fun setComparisonMatchesByNumberAndLeavesMissingPairsWithoutZeroHistory() {
         val previous = listOf(
             WorkoutSet("p1", 1, 8, BigDecimal("25")),

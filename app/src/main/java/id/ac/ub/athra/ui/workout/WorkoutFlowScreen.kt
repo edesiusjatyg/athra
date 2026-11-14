@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -244,14 +245,21 @@ fun WorkoutFlowScreen(
                     keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Box {
-                    TextButton(onClick = { pendingMuscleFilter = muscleFilter; filterMenu = true }) { Text("Kelompok otot: $pendingMuscleFilter ▾") }
-                    DropdownMenu(expanded = filterMenu, onDismissRequest = { filterMenu = false }) {
-                        listOf("Semua", "Back", "Chest", "Legs", "Arms", "Shoulders", "Core").forEach { group ->
-                            DropdownMenuItem(text = { Text(group) }, onClick = { pendingMuscleFilter = group; filterMenu = false })
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Box {
+                        TextButton(
+                            onClick = { pendingMuscleFilter = muscleFilter; filterMenu = true },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Kelompok otot: $pendingMuscleFilter ▾", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        DropdownMenu(expanded = filterMenu, onDismissRequest = { filterMenu = false }) {
+                            listOf("Semua", "Back", "Chest", "Legs", "Arms", "Shoulders", "Core").forEach { group ->
+                                DropdownMenuItem(text = { Text(group) }, onClick = { pendingMuscleFilter = group; filterMenu = false })
+                            }
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         TextButton(onClick = { pendingMuscleFilter = "Semua" }) { Text("Reset filter") }
                         TextButton(onClick = { muscleFilter = pendingMuscleFilter }) { Text("Terapkan") }
                     }
