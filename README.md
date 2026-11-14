@@ -43,6 +43,8 @@ Untuk perangkat fisik, berikan alamat LAN komputer yang menjalankan emulator:
 
 Buat akun uji melalui layar Daftar aplikasi. Uji isolasi akun dengan membuat dua alamat email berbeda lalu keluar dan masuk ke akun lainnya. Jangan gunakan password produksi untuk emulator.
 
+Untuk menyiapkan riwayat demo, build debug dengan `-Pathra.authEmulator=true`, masuk ke akun demo khusus, lalu buka **Profil → Demo Auth Emulator → Reset fixture H1/H2**. Aksi ini mengganti dua sesi fixture stabil untuk UID aktif dan mempertahankan sesi lain. Alat ini hanya tampil pada debug yang mengaktifkan Auth Emulator; implementasi release adalah no-op. Buat sesi ketiga lewat alur workout biasa: Bench Press 10×32 kg dan 10×30 kg, lalu Squat 10×40 kg; Finish dan Simpan. Untuk demo yang bersih, gunakan akun Auth Emulator khusus tanpa riwayat lain.
+
 ## Firebase project milik pemilik aplikasi
 
 Aktifkan provider Email/Password pada Firebase Authentication. Berikan properti Gradle berikut melalui `~/.gradle/gradle.properties` atau argumen `-P` saat build:
@@ -61,4 +63,4 @@ Setelah akun terautentikasi, katalog, profil lokal, sesi, set, riwayat, PR, anal
 
 ## Status verifikasi
 
-Lihat [TODO.md](TODO.md) untuk item implementasi, [PRD.md](PRD.md) untuk acceptance criteria, dan [VERIFICATION.md](VERIFICATION.md) untuk hasil build/test serta status AC. Pada 14 November 2026, 10/10 instrumented test lulus di Medium_Phone AVD API 37; fixture analytics 10.000 set tercatat 148 ms. Screenshot runtime Home, Library, dan Summary ada di `screenshots/runtime/`. Verifikasi offline, rotasi, pemulihan process death, dan beberapa acceptance UI masih terbuka. Query analytics dan referensi memakai query Room terkelompok untuk menghindari pemuatan N+1.
+Lihat [TODO.md](TODO.md) untuk item implementasi, [PRD.md](PRD.md) untuk acceptance criteria, dan [VERIFICATION.md](VERIFICATION.md) untuk hasil build/test serta status AC. Build lokal terbaru meluluskan 14 unit test, lint, debug/release assemble, dan kompilasi instrumented test. Run emulator sebelumnya meluluskan 10/10 tes dan mengukur fixture analytics 10.000 set dalam 148 ms; tes H1/H2 baru ditambahkan setelah run itu dan belum dijalankan karena emulator sedang mati. Screenshot runtime Home, Library, dan Summary ada di `screenshots/runtime/`. Verifikasi connected terbaru, offline, rotasi, pemulihan process death, serta beberapa acceptance UI masih terbuka. Query analytics dan referensi memakai query Room terkelompok untuk menghindari pemuatan N+1.

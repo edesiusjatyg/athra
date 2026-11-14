@@ -34,6 +34,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import id.ac.ub.athra.BuildConfig
+import id.ac.ub.athra.data.local.AppDatabase
+import id.ac.ub.athra.debugfixtures.installH1H2Fixtures
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Column
@@ -45,6 +56,8 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 fun AthraNavGraph(
     navController: NavHostController,
+    userId: String,
+    database: AppDatabase,
     userName: String,
     workoutState: WorkoutUiState,
     workoutViewModel: WorkoutViewModel,
@@ -58,6 +71,10 @@ fun AthraNavGraph(
     val scope = rememberCoroutineScope()
     var periodDays by rememberSaveable { mutableIntStateOf(7) }
     var selectedWorkout by remember { mutableStateOf<CompletedWorkout?>(null) }
+    var showFixtureConfirm by rememberSaveable(userId) { mutableStateOf(false) }
+    var fixtureBusy by rememberSaveable(userId) { mutableStateOf(false) }
+    var fixtureMessage by rememberSaveable(userId) { mutableStateOf<String?>(null) }
+    var fixtureMessageIsError by rememberSaveable(userId) { mutableStateOf(false) }
     fun openWorkoutDetail(sessionId: String) {
         scope.launch {
             selectedWorkout = workoutViewModel.loadWorkoutDetail(sessionId)
@@ -176,13 +193,32 @@ fun AthraNavGraph(
                 },
                 topBar = { TopAppBar(title = { Text("Profil") }) },
             ) { insets ->
-                Column(Modifier.padding(insets).padding(20.dp)) {
+                Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp)) {
                     Text(userName, style = MaterialTheme.typography.headlineMedium)
                     Text(userEmail, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("Data latihan tersimpan di perangkat ini.")
                     TextButton(onClick = { navController.navigate(Routes.EditProfile.route) }) { Text("Edit profil") }
                     TextButton(onClick = { navController.navigate(Routes.Preferences.route) }) { Text("Preferensi satuan") }
                     TextButton(onClick = onSignOut) { Text("Keluar") }
+                    if (BuildConfig.DEBUG && BuildConfig.AUTH_EMULATOR_ENABLED) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Demo Auth Emulator", style = MaterialTheme.typography.titleSmall)
+                        Text("Reset hanya mengganti fixture H1/H2 untuk akun ini. Riwayat lain tetap ada.")
+                        OutlinedButton(
+                            onClick = { showFixtureConfirm = true },
+                            enabled = !fixtureBusy,
+                        ) {
+                            if (fixtureBusy) CircularProgressIndicator()
+                            else Text("Reset fixture H1/H2")
+                        }
+                        fixtureMessage?.let {
+                            Text(
+                                it,
+                                color = if (fixtureMessageIsError) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.secondary,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -205,6 +241,41 @@ fun AthraNavGraph(
                 onSave = { name -> scope.launch { if (workoutViewModel.updateProfileName(name)) navController.popBackStack() } },
             )
         }
+    }
+    if (showFixtureConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!fixtureBusy) showFixtureConfirm = false },
+            title = { Text("Reset fixture demo?") },
+            text = { Text("H1 dan H2 pada akun ini akan dibuat ulang dengan tanggal dan data PRD. Sesi lain tidak dihapus.") },
+            confirmButton = {
+                TextButton(
+                    enabled = !fixtureBusy,
+                    onClick = {
+                        showFixtureConfirm = false
+                        scope.launch {
+                            fixtureBusy = true
+                            try {
+                                installH1H2Fixtures(database, userId)
+                                workoutViewModel.refreshDraft().join()
+                                workoutViewModel.refreshHomeAnalytics().join()
+                                workoutViewModel.refreshReferences().join()
+                                workoutViewModel.refreshAnalytics(periodDays)
+                                fixtureMessageIsError = false
+                                fixtureMessage = "Fixture H1/H2 siap. Buat sesi H3 melalui alur workout biasa."
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                throw cancelled
+                            } catch (error: Exception) {
+                                fixtureMessageIsError = true
+                                fixtureMessage = error.message ?: "Fixture demo gagal disiapkan."
+                            } finally {
+                                fixtureBusy = false
+                            }
+                        }
+                    },
+                ) { Text("Reset fixture") }
+            },
+            dismissButton = { TextButton(onClick = { showFixtureConfirm = false }, enabled = !fixtureBusy) { Text("Batal") } },
+        )
     }
 }
 

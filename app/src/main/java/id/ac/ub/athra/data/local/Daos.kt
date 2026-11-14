@@ -120,6 +120,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_sessions WHERE userId = :userId AND status = 'COMPLETED' ORDER BY endedAt DESC, createdAt DESC, sessionId")
     suspend fun getCompleted(userId: String): List<WorkoutSessionEntity>
 
+    @Query("DELETE FROM workout_sessions WHERE userId = :userId AND sessionId IN (:sessionIds)")
+    suspend fun deleteSessionsByIds(userId: String, sessionIds: List<String>)
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertSession(session: WorkoutSessionEntity)
 

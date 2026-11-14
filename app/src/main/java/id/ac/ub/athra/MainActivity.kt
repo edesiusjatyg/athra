@@ -32,7 +32,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val container = (application as AthraApplication).container
+        val athraApplication = application as AthraApplication
+        val container = athraApplication.container
         val authViewModel = ViewModelProvider(
             this,
             AuthViewModelFactory(container.authRepository, container.workoutRepository),
@@ -68,6 +69,8 @@ class MainActivity : ComponentActivity() {
                         val navController = rememberNavController()
                         AthraNavGraph(
                             navController = navController,
+                            userId = user.uid,
+                            database = athraApplication.database,
                             userName = workoutState.profileName.ifBlank { user.displayName.ifBlank { user.email.substringBefore('@') } },
                             workoutState = workoutState,
                             workoutViewModel = workoutViewModel,
