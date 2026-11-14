@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -53,6 +54,7 @@ fun WorkoutFlowScreen(
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    val largeFont = LocalDensity.current.fontScale >= 1.5f
     var exerciseId by rememberSaveable(draft.session.id) {
         mutableStateOf(state.selectedExerciseId.ifBlank { draft.exercises.firstOrNull()?.exercise?.id.orEmpty() })
     }
@@ -127,27 +129,36 @@ fun WorkoutFlowScreen(
             } else {
                 Text("Gerakan", style = MaterialTheme.typography.titleMedium)
                 draft.exercises.forEach { item ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(
-                            onClick = {
-                                exerciseId = item.exercise.id
-                                onSelectExercise(item.exercise.id)
-                                editingSetId = null
-                                editingOriginalDisplay = null
-                                editingOriginalKg = null
-                                reps = ""
-                                weight = ""
-                                onClearSetForm()
-                            },
-                            enabled = !state.busy,
-                        ) { Text(item.exercise.name) }
-                        TextButton(onClick = { onOpenExerciseDetails(item.exercise.id) }, enabled = !state.busy) { Text("Detail") }
-                        TextButton(onClick = { pendingRemove = item }, enabled = !state.busy) { Text("Hapus gerakan") }
+                    val selectExercise = {
+                        exerciseId = item.exercise.id
+                        onSelectExercise(item.exercise.id)
+                        editingSetId = null
+                        editingOriginalDisplay = null
+                        editingOriginalKg = null
+                        reps = ""
+                        weight = ""
+                        onClearSetForm()
+                    }
+                    if (largeFont) {
+                        Column(Modifier.fillMaxWidth()) {
+                            TextButton(onClick = selectExercise, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                                Text(item.exercise.name)
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { onOpenExerciseDetails(item.exercise.id) }, enabled = !state.busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Detail") }
+                                TextButton(onClick = { pendingRemove = item }, enabled = !state.busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Hapus gerakan") }
+                            }
+                        }
+                    } else {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            TextButton(onClick = selectExercise, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text(item.exercise.name) }
+                            TextButton(onClick = { onOpenExerciseDetails(item.exercise.id) }, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Detail") }
+                            TextButton(onClick = { pendingRemove = item }, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Hapus gerakan") }
+                        }
                     }
                     item.sets.forEach { set ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            TextButton(
-                                onClick = {
+                        val setLabel = "${set.number}.  ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()} × ${set.reps}"
+                        val editSet = {
                                     exerciseId = item.exercise.id
                                     onSelectExercise(item.exercise.id)
                                     editingSetId = set.id
@@ -156,11 +167,9 @@ fun WorkoutFlowScreen(
                                     editingOriginalDisplay = weight
                                     editingOriginalKg = set.weightKg.stripTrailingZeros().toPlainString()
                                     onEditSetInputs(set.id, reps, weight, editingOriginalKg.orEmpty())
-                                },
-                                enabled = !state.busy,
-                            ) { Text("${set.number}.  ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()} × ${set.reps}") }
-                            TextButton(
-                                onClick = { scope.launch {
+                        }
+                        val deleteSet: () -> Unit = {
+                            scope.launch {
                                     onDeleteSet(draft.session.id, set.id)
                                     if (editingSetId == set.id) {
                                         editingSetId = null
@@ -168,9 +177,18 @@ fun WorkoutFlowScreen(
                                         editingOriginalKg = null
                                         onClearSetForm()
                                     }
-                                } },
-                                enabled = !state.busy,
-                            ) { Text("Hapus") }
+                                }
+                        }
+                        if (largeFont) {
+                            Column(Modifier.fillMaxWidth()) {
+                                TextButton(onClick = editSet, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(setLabel) }
+                                TextButton(onClick = deleteSet, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Hapus set") }
+                            }
+                        } else {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                TextButton(onClick = editSet, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text(setLabel) }
+                                TextButton(onClick = deleteSet, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Hapus set") }
+                            }
                         }
                     }
                 }

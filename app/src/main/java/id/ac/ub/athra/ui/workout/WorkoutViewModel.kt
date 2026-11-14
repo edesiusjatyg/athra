@@ -113,13 +113,21 @@ class WorkoutViewModel(
             repository.observeCatalog()
                 .catch { error -> mutableState.value = mutableState.value.copy(catalogLoading = false, catalogError = error.message ?: "Katalog gagal dimuat.") }
                 .collectLatest { exercises ->
-                    val references = withContext(Dispatchers.IO) { referenceMap(exercises) }
-                    mutableState.value = mutableState.value.copy(
-                        catalog = exercises,
-                        exerciseReferences = references,
-                        catalogLoading = false,
-                        catalogError = null,
-                    )
+                    capture { withContext(Dispatchers.IO) { referenceMap(exercises) } }
+                        .onSuccess { references ->
+                            mutableState.value = mutableState.value.copy(
+                                catalog = exercises,
+                                exerciseReferences = references,
+                                catalogLoading = false,
+                                catalogError = null,
+                            )
+                        }
+                        .onFailure { error ->
+                            mutableState.value = mutableState.value.copy(
+                                catalogLoading = false,
+                                catalogError = error.message ?: "Referensi gerakan gagal dimuat.",
+                            )
+                        }
                 }
         }
     }
@@ -340,7 +348,7 @@ class WorkoutViewModel(
                     mutableState.value = mutableState.value.copy(
                         selectedWorkoutDetail = detail,
                         workoutDetailLoading = false,
-                        workoutDetailError = if (detail == null) "Detail sesi tidak tersedia." else null,
+                        workoutDetailError = null,
                     )
                 }
                 detail

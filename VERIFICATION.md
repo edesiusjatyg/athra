@@ -16,6 +16,22 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
 Perintah suite lengkap di atas berakhir **BUILD SUCCESSFUL** pada 14 November 2026: **14/14 unit test**, lint, debug/release assemble, dan **12/12 instrumented test**. Instrumented terdiri dari lima tes repository Room, satu constraint, dan enam Compose smoke test; tidak ada yang dilewati. Perangkat: `emulator-5554`, Medium_Phone AVD, API 37, x86_64. Benchmark fixture 10.000 set mencatat **147 ms**, di bawah target 2 detik; angka ini hanya waktu query/kalkulasi repository Room, bukan frame time UI.
 
+## Pemeriksaan revisi terbaru
+
+Pada revisi `47dd042` dan perubahan yang sedang diverifikasi, workout graph kini memakai route terpisah untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. Ditambahkan state loading/error untuk pemulihan draft dan retry katalog, regression tests untuk menunggu pemeriksaan draft dan mempertahankan layar workout ketika discard gagal, tes layar Summary/Edit Profile, dan uji rollback transaksi finalisasi.
+
+Perintah yang dijalankan pada source saat ini:
+
+```sh
+./gradlew :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin testDebugUnitTest
+./gradlew lintDebug
+./gradlew assembleDebug
+```
+
+Semua perintah compile, unit test, lint, dan debug assemble pada batch terbaru berhasil; 14/14 unit test lulus. Source saat ini memiliki **22 instrumented test** (6 tes Room, 1 constraint, 11 Compose flow smoke, dan 4 auth validation). `adb devices` tidak menampilkan perangkat, jadi 22 tes tersebut belum dieksekusi dan pengukuran rotasi/IME belum diulang. Hasil connected run **12/12** di bagian atas adalah bukti historis pada revisi sebelumnya, bukan hasil untuk source terbaru.
+
+Metadata Figma memastikan page `ATHRA · Minimal Redesign` ber-ID `29:2`. Permintaan screenshot dan context ditolak karena batas panggilan Figma MCP Starter; review visual dan pencocokan implementasi terhadap page tersebut masih terbuka.
+
 APK dipasang dan diuji dengan Firebase Auth Emulator lokal (`demo-athra`, port 9099). Auth Emulator dapat diakses lewat `adb reverse tcp:9099 tcp:9099` dan debug host `127.0.0.1`. Pendaftaran akun dengan nama, sign in, reset fixture H1/H2, lalu pembuatan H3 lewat UI berhasil. Home menampilkan H3 terbaru; Progress berubah dari H1/H2 (2 sesi, 4 set, 38 repetisi, 1.190 kg) menjadi H1/H2/H3 (3 sesi, 7 set, 68 repetisi, 2.210 kg). Detail H3 menyimpan snapshot “Rekor baru” Bench Press 32 kg dan “Menyamai rekor” Squat 40 kg.
 
 Mode Wi-Fi/data dimatikan setelah sign in; sesi offline berhasil disimpan dan tampil di Home. Force-stop saat draft aktif berisi satu set, lalu relaunch, memulihkan akun, set Bench Press 10×20 kg, dan timer. Pada font scale 200%, Home menumpuk judul/subjudul, workout dapat di-scroll, dan tombol Simpan set dapat dipakai. Otomasi ADB tidak menampilkan soft keyboard Android di layar, jadi inset/CTA saat keyboard software benar-benar terbuka belum dibuktikan. Rotasi dan pergantian akun belum diuji manual.
@@ -46,7 +62,7 @@ Status “implementasi ada” berarti alur/kode ditemukan dalam aplikasi; itu bu
 | AC30 | Sesi beban nol tetap dihitung dan tidak dianggap kosong; tercakup unit test. |
 | AC31 | Konversi 10 lb ke 4.53592370 kg tercakup unit test. |
 | AC32–33 | Preferensi unit disimpan per UID dan konversi tampilan tersedia; Compose test penyimpanan eksplisit lulus. Persistensi lintas relaunch dan isolasi dua UID belum diuji manual. |
-| AC34 | Detail memakai snapshot PR final; integration test snapshot final lulus pada emulator. Tampilan detail belum dicapture. |
+| AC34 | Detail memakai snapshot PR final; integration test snapshot final lulus pada emulator. Screenshot detail H3 ada di `screenshots/runtime/workout-detail-pr-h3-api37.png`. |
 | AC35–38 | Filter dan detail exercise dicoba manual; nama saat sign-up sekarang tersimpan sebagai nama profil. Pencegahan duplikat tersedia; Edit Profile dan isolasi preferensi per UID belum diuji manual. |
 | AC39 | Sesi diselesaikan saat Wi-Fi dan data dimatikan setelah login; Home menampilkan sesi tersimpan lokal. |
 | AC40 | Tes repository bahwa discard menghapus draft beserta child rows lulus pada emulator. |

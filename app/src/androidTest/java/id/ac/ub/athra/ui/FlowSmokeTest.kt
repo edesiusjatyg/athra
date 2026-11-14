@@ -8,22 +8,28 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import id.ac.ub.athra.domain.model.Exercise
+import id.ac.ub.athra.domain.model.PersonalRecord
+import id.ac.ub.athra.domain.model.PersonalRecordStatus
 import id.ac.ub.athra.domain.model.SessionStatus
 import id.ac.ub.athra.domain.model.WeightUnit
 import id.ac.ub.athra.domain.model.WorkoutSession
 import id.ac.ub.athra.domain.model.WorkoutDraft
 import id.ac.ub.athra.domain.model.WorkoutExercise
+import id.ac.ub.athra.domain.model.WorkoutSet
 import id.ac.ub.athra.ui.auth.AuthScreen
 import id.ac.ub.athra.ui.auth.AuthUiState
+import id.ac.ub.athra.ui.screens.EditProfileScreen
 import id.ac.ub.athra.ui.screens.HistoryScreen
 import id.ac.ub.athra.ui.screens.HomeScreen
 import id.ac.ub.athra.ui.screens.PreferencesScreen
 import id.ac.ub.athra.ui.screens.ProgressScreen
 import id.ac.ub.athra.ui.screens.PreWorkoutScreen
 import id.ac.ub.athra.ui.workout.WorkoutFlowScreen
+import id.ac.ub.athra.ui.workout.WorkoutSummaryScreen
 import id.ac.ub.athra.ui.workout.WorkoutUiState
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.atomic.AtomicInteger
+import java.math.BigDecimal
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -115,6 +121,54 @@ class FlowSmokeTest {
         }
         compose.onNodeWithText("Sesi uji").performClick()
         assertTrue(openedId == "s1")
+    }
+
+    @Test
+    fun summaryShowsSavedMetricsAndPersonalRecordBeforeSave() {
+        val exercise = Exercise("bench_press", "Bench Press", "Chest", "Barbell", "")
+        val draft = WorkoutDraft(
+            WorkoutSession("review", "user", "Latihan sore", 1_000, 61_000, SessionStatus.REVIEW),
+            listOf(WorkoutExercise(exercise, 0, listOf(WorkoutSet("set-1", 1, 10, BigDecimal("32"))))),
+        )
+        var saved = false
+        compose.setContent {
+            WorkoutSummaryScreen(
+                draft = draft,
+                state = WorkoutUiState(
+                    draft = draft,
+                    personalRecords = listOf(
+                        PersonalRecord("bench_press", BigDecimal("30"), BigDecimal("32"), PersonalRecordStatus.NEW_RECORD),
+                    ),
+                ),
+                weightUnit = WeightUnit.KG,
+                onResume = {},
+                onSave = { saved = true },
+                onDiscard = {},
+            )
+        }
+
+        compose.onNodeWithText("Ringkasan workout").assertIsDisplayed()
+        compose.onNodeWithText("Rekor baru · 32 kg · sebelumnya 30 kg").assertIsDisplayed()
+        compose.onNodeWithText("Simpan sesi").performClick()
+        compose.runOnIdle { assertTrue(saved) }
+    }
+
+    @Test
+    fun editProfileTrimsNameBeforeSaving() {
+        var savedName: String? = null
+        compose.setContent {
+            EditProfileScreen(
+                initialName = "",
+                email = "athra@example.test",
+                error = null,
+                onBack = {},
+                onSave = { savedName = it },
+            )
+        }
+
+        compose.onNodeWithText("Nama").performTextInput("  Atlet ATHRA  ")
+        compose.onNodeWithText("Simpan").performClick()
+        compose.runOnIdle { assertEquals("Atlet ATHRA", savedName) }
     }
 
     @Test

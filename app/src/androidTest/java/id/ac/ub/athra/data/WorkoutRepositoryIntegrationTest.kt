@@ -94,6 +94,37 @@ class WorkoutRepositoryIntegrationTest {
     }
 
     @Test
+    fun finalizationRollsBackWhenSnapshotInsertFails() = runBlocking {
+        repository.seedCatalog()
+        val draft = repository.startOrResume("user-a", "Rollback", now = 1_000L)
+        repository.addExercise("user-a", draft.session.id, "bench_press")
+        repository.saveSet("user-a", draft.session.id, "bench_press", null, "10", "32", WeightUnit.KG)
+        repository.enterReview("user-a", draft.session.id, endedAt = 2_000L)
+        database.openHelper.writableDatabase.execSQL(
+            """
+            CREATE TRIGGER fail_snapshot_insert
+            BEFORE INSERT ON personal_record_snapshots
+            BEGIN
+                SELECT RAISE(ABORT, 'forced snapshot failure');
+            END
+            """.trimIndent(),
+        )
+
+        var failed = false
+        try {
+            repository.finalizeWorkout("user-a", draft.session.id)
+        } catch (_: Exception) {
+            failed = true
+        }
+
+        assertTrue("The forced snapshot insert should fail", failed)
+        assertEquals("REVIEW", database.workoutDao().getSession(draft.session.id)?.status)
+        assertNotNull(database.workoutDao().getActive("user-a"))
+        assertTrue(database.workoutDao().getSnapshots(draft.session.id).isEmpty())
+        assertNotNull(repository.getDraft("user-a"))
+    }
+
+    @Test
     fun progressiveReferenceUsesMostRecentSessionRatherThanMaximumLoad() = runBlocking {
         repository.seedCatalog()
         suspend fun complete(load: String, startedAt: Long): String {

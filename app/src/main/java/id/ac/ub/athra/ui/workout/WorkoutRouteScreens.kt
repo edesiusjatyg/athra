@@ -77,7 +77,7 @@ fun QuickStartScreen(
             )
         },
         bottomBar = {
-            Button(onClick = onStart, enabled = !busy, modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+            Button(onClick = onStart, enabled = !busy, modifier = Modifier.fillMaxWidth().imePadding().padding(20.dp)) {
                 if (busy) CircularProgressIndicator() else Text("Mulai sesi")
             }
         },
