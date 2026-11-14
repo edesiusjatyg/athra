@@ -9,6 +9,8 @@ import id.ac.ub.athra.domain.model.Exercise
 import id.ac.ub.athra.domain.model.WorkoutDraft
 import id.ac.ub.athra.domain.model.WorkoutSession
 import id.ac.ub.athra.domain.model.WeightUnit
+import id.ac.ub.athra.domain.model.PersonalRecord
+import id.ac.ub.athra.domain.model.SessionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +24,7 @@ data class WorkoutUiState(
     val catalog: List<Exercise> = emptyList(),
     val recentSessions: List<WorkoutSession> = emptyList(),
     val analytics: AnalyticsSummary? = null,
+    val personalRecords: List<PersonalRecord> = emptyList(),
     val loading: Boolean = true,
     val busy: Boolean = false,
     val error: String? = null,
@@ -48,8 +51,12 @@ class WorkoutViewModel(
     }
 
     fun refreshDraft() = viewModelScope.launch(Dispatchers.IO) {
-        runCatching { repository.getDraft(userId) }
-            .onSuccess { mutableState.value = mutableState.value.copy(draft = it, loading = false) }
+        runCatching {
+            val draft = repository.getDraft(userId)
+            val records = if (draft?.session?.status == SessionStatus.REVIEW) repository.previewRecords(userId, draft) else emptyList()
+            draft to records
+        }
+            .onSuccess { (draft, records) -> mutableState.value = mutableState.value.copy(draft = draft, personalRecords = records, loading = false) }
             .onFailure { fail(it) }
     }
 
@@ -79,8 +86,12 @@ class WorkoutViewModel(
         repository.deleteSet(userId, sessionId, setId)
     }
 
-    suspend fun finish(sessionId: String): Boolean = mutateResult {
-        repository.enterReview(userId, sessionId, System.currentTimeMillis())
+    suspend fun finish(sessionId: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val draft = repository.enterReview(userId, sessionId, System.currentTimeMillis())
+            val records = repository.previewRecords(userId, draft)
+            mutableState.value = mutableState.value.copy(draft = draft, personalRecords = records, error = null)
+        }.fold(onSuccess = { true }, onFailure = { fail(it); false })
     }
 
     suspend fun resume(sessionId: String) = mutate { repository.resume(userId, sessionId) }

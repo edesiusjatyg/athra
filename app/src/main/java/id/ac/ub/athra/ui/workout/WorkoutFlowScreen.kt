@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import id.ac.ub.athra.domain.calculation.calculateTotals
 import id.ac.ub.athra.domain.calculation.displayNumber
 import id.ac.ub.athra.domain.model.SessionStatus
+import id.ac.ub.athra.domain.model.PersonalRecordStatus
 import id.ac.ub.athra.domain.model.WeightUnit
 import id.ac.ub.athra.domain.model.WorkoutDraft
 import id.ac.ub.athra.ui.theme.Background
@@ -65,7 +66,19 @@ fun WorkoutFlowScreen(
             if (draft.session.status == SessionStatus.REVIEW) {
                 Text("${totals.exerciseCount} gerakan", style = MaterialTheme.typography.titleMedium)
                 draft.exercises.filter { it.sets.isNotEmpty() }.forEach { item ->
-                    Text("${item.exercise.name}: ${item.sets.maxOf { it.weightKg }} kg tertinggi", modifier = Modifier.padding(top = 8.dp))
+                    val record = state.personalRecords.firstOrNull { it.exerciseId == item.exercise.id }
+                    val status = when (record?.status) {
+                        PersonalRecordStatus.BASELINE -> "Catatan awal"
+                        PersonalRecordStatus.NEW_RECORD -> "Rekor baru"
+                        PersonalRecordStatus.MATCHED -> "Menyamai rekor"
+                        PersonalRecordStatus.BELOW_RECORD -> "Belum melampaui rekor"
+                        null -> ""
+                    }
+                    Text(
+                        "${item.exercise.name}: ${record?.currentMaxKg ?: item.sets.maxOf { it.weightKg }} kg · $status" +
+                            (record?.previousMaxKg?.let { " · sebelumnya ${it} kg" } ?: ""),
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                 }
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(24.dp))
