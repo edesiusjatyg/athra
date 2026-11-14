@@ -123,14 +123,15 @@ fun SectionHeader(
             style = MaterialTheme.typography.headlineSmall.copy(color = Ink),
         )
         if (action != null && onAction != null) {
-            Text(
-                text = action,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Accent,
-                    fontWeight = FontWeight.Medium,
-                ),
-                modifier = Modifier.clickable(onClick = onAction),
-            )
+            androidx.compose.material3.TextButton(onClick = onAction) {
+                Text(
+                    text = action,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Accent,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                )
+            }
         }
     }
 }

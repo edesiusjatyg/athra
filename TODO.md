@@ -104,7 +104,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 ## 8. UI, aksesibilitas, dan keandalan
 
 - [x] Ganti mockup dengan data/state aktual; terjemahkan UI utama ke Bahasa Indonesia sambil mempertahankan nama exercise/istilah yang ditetapkan PRD.
-- [ ] Sesuaikan tema gelap ATHRA dengan Figma atau token fallback PRD; jangan menyalin elemen status bar/home indicator iOS.
+- [x] Sesuaikan tema gelap ATHRA dengan Figma atau token fallback PRD; jangan menyalin elemen status bar/home indicator iOS.
 - [x] Pastikan seluruh kontrol yang terlihat punya aksi yang benar; hilangkan kontrol placeholder dan angka personal hardcoded.
 - [ ] Tangani loading, empty, validasi, network/storage error, retry, detail tidak ditemukan, dan recovery draft sesuai tabel PRD.
 - [ ] Pastikan keyboard tidak menutup input/CTA, layout dapat di-scroll, system insets benar, touch target minimal 48 dp, dan font scale 200% tetap dapat dipakai.
@@ -116,7 +116,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 
 - [x] Ganti tes template dengan unit test domain untuk parsing, volume, konversi, periode 7/30/90, PR, referensi, dan aturan pembulatan.
 - [ ] Tambahkan integration test Room untuk transaksi, constraint, migrasi, recovery, idempotensi, dan isolasi UID. (Tes in-memory mencakup constraint, finalisasi, snapshot, retry idempoten, isolasi UID, resume, renumber, serta discard; tes migrasi/recovery belum dibuat. Semua belum berjalan tanpa perangkat.)
-- [ ] Tambahkan Compose/instrumented test untuk alur auth, workout, Summary, History, Analytics, Profile, dan Preferences. (Dua Compose smoke test mencakup pergantian Sign In/Sign Up dan lanjutkan draft; coverage layar lain belum dibuat.)
+- [ ] Tambahkan Compose/instrumented test untuk alur auth, workout, Summary, History, Analytics, Profile, dan Preferences. (Lima Compose smoke test mencakup auth, lanjutkan draft, periode analytics, pembukaan riwayat, dan penyimpanan unit; Profile/Edit Profile, Summary, dan alur set belum dites.)
 - [ ] Penuhi acceptance criteria AC01–AC42 pada PRD; tambahkan kasus REVIEW setelah process death, pergantian akun saat query berjalan, batas periode 30/90 hari, dan sesi lintas tengah malam.
 - [x] Jalankan dan catat hasil aktual: ./gradlew testDebugUnitTest lintDebug assembleDebug. Ketiganya lulus pada 14 Nov 2026.
 - [ ] Jalankan connectedDebugAndroidTest pada emulator/perangkat dengan Auth Emulator bila diperlukan; catat tes yang tidak dapat dijalankan beserta alasannya. (Empat tes instrumented berhasil dikompilasi; task dijalankan dan gagal dengan `No connected devices!`, sesuai `adb devices -l`.)
@@ -124,7 +124,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [ ] Pasang dan jalankan APK pada emulator/perangkat; verifikasi alur demo, kondisi offline, rotasi, dan state yang dipulihkan.
 - [ ] Siapkan fixture debug H1/H2 yang dapat di-reset dan tidak aktif di production; buat H3 lewat UI saat demo.
 - [ ] Simpan screenshot runtime nyata untuk alur utama, PR, referensi, analytics, dan validasi.
-- [ ] Lengkapi README, path APK, hasil tes, daftar acceptance lulus/gagal/belum dijalankan, lima teori perkuliahan beserta lokasi kode, dan kendala eksternal Firebase production. (README dan path APK tersedia; acceptance report dan lima teori/lokasi kode belum dirangkum.)
+- [ ] Lengkapi README, path APK, hasil tes, daftar acceptance lulus/gagal/belum dijalankan, lima teori perkuliahan beserta lokasi kode, dan kendala eksternal Firebase production. (README, APK path, acceptance mapping, teori, dan prasyarat Firebase dicatat di README/VERIFICATION; bukti runtime belum tersedia.)
 - [ ] Pastikan demo, laporan, README, screenshot, dan implementasi menjelaskan perilaku yang sama; jangan klaim fitur atau verifikasi yang belum dilakukan.
 
 ## Definition of Done

@@ -15,6 +15,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -153,10 +156,11 @@ private fun HomeTopBar(userName: String, onOpenProfile: () -> Unit) {
         }
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(48.dp)
                 .clip(CircleShape)
                 .background(Muted)
-                .clickable(onClick = onOpenProfile),
+                .semantics { contentDescription = "Buka profil" }
+                .clickable(role = Role.Button, onClick = onOpenProfile),
             contentAlignment = Alignment.Center,
         ) { Text(userName.take(1).uppercase(), color = Ink, style = MaterialTheme.typography.titleMedium) }
     }

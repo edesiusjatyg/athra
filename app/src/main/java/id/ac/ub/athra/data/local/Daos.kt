@@ -101,6 +101,16 @@ interface WorkoutDao {
     """)
     suspend fun getLatestReferenceRows(userId: String): List<ReferenceSetRow>
 
+    @Query("""
+        SELECT ws.weightKg
+        FROM workout_sessions s
+        JOIN session_exercises se ON se.sessionId = s.sessionId
+        JOIN workout_sets ws ON ws.sessionExerciseId = se.sessionExerciseId
+        WHERE s.userId = :userId AND s.status = 'COMPLETED' AND se.exerciseId = :exerciseId
+            AND (:excludingSessionId IS NULL OR s.sessionId != :excludingSessionId)
+    """)
+    suspend fun getCompletedWeights(userId: String, exerciseId: String, excludingSessionId: String?): List<BigDecimal>
+
     @Query("SELECT * FROM workout_sessions WHERE sessionId = :sessionId")
     suspend fun getSession(sessionId: String): WorkoutSessionEntity?
 

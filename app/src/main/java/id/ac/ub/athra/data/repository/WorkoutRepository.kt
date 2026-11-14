@@ -189,16 +189,10 @@ class WorkoutRepository(
         require(session.status == SessionStatus.REVIEW && session.endedAt != null) { "Sesi belum siap disimpan." }
         val draft = loadDraft(userId, sessionId) ?: error("Sesi tidak tersedia.")
         require(calculateTotals(draft).setCount > 0) { "Tambahkan minimal satu set yang valid." }
-        val completedBefore = workout.getCompleted(userId).filter { it.sessionId != sessionId }
         val records = mutableListOf<PersonalRecord>()
         draft.exercises.filter { it.sets.isNotEmpty() }.forEach { current ->
-            val previousWeights = mutableListOf<BigDecimal>()
-            completedBefore.forEach { historicalSession ->
-                workout.getSessionExercises(historicalSession.sessionId)
-                    .filter { it.exerciseId == current.exercise.id }
-                    .forEach { item -> workout.getSets(item.sessionExerciseId).forEach { previousWeights += it.weightKg } }
-            }
-            personalRecord(current.exercise.id, current.sets.map { it.weightKg }, previousWeights.maxOrNull())?.let(records::add)
+            val previousMax = workout.getCompletedWeights(userId, current.exercise.id, sessionId).maxOrNull()
+            personalRecord(current.exercise.id, current.sets.map { it.weightKg }, previousMax)?.let(records::add)
         }
         workout.insertSnapshots(records.map { record ->
             PersonalRecordSnapshotEntity(
@@ -215,13 +209,7 @@ class WorkoutRepository(
     }
 
     suspend fun historicalMax(userId: String, exerciseId: String, excludingSessionId: String? = null): BigDecimal? {
-        val weights = mutableListOf<BigDecimal>()
-        workout.getCompleted(userId).filter { it.sessionId != excludingSessionId }.forEach { session ->
-            workout.getSessionExercises(session.sessionId).filter { it.exerciseId == exerciseId }.forEach { item ->
-                workout.getSets(item.sessionExerciseId).forEach { weights += it.weightKg }
-            }
-        }
-        return weights.maxOrNull()
+        return workout.getCompletedWeights(userId, exerciseId, excludingSessionId).maxOrNull()
     }
 
     suspend fun latestReference(userId: String, exerciseId: String): ExerciseReference? {
