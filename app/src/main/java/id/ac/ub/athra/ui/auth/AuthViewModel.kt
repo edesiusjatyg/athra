@@ -50,6 +50,7 @@ class AuthViewModel(
     }
 
     fun signIn(email: String, password: String) {
+        if (mutableState.value.busy) return
         val cleanEmail = email.trim()
         val validation = when {
             !Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches() -> "Masukkan email yang valid."
@@ -69,6 +70,7 @@ class AuthViewModel(
     }
 
     fun signUp(name: String, email: String, password: String, confirmation: String) {
+        if (mutableState.value.busy) return
         val cleanName = name.trim()
         val cleanEmail = email.trim()
         val validation = when {

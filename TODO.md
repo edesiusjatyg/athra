@@ -61,12 +61,12 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [ ] Scope satu WorkoutViewModel ke workout graph agar Library, Active, dan Summary membaca sesi yang sama.
 - [ ] Gunakan unidirectional data flow, StateFlow, state hoisting, lifecycle-aware collection, serta SavedStateHandle untuk state layar/input sementara yang sesuai.
 - [ ] Pertahankan asal navigasi Exercise Details agar Back kembali ke Library atau Active yang benar.
-- [ ] Terapkan Back sesuai state workout: jangan pernah membuang sesi tanpa konfirmasi; Active dapat tetap latihan, kembali dengan draft, atau buang sesi.
+- [x] Terapkan Back sesuai state workout: jangan pernah membuang sesi tanpa konfirmasi; Active dapat tetap latihan, kembali dengan draft, atau buang sesi.
 
 ## 5. Workout end-to-end
 
-- [ ] Implementasikan Start Workout dan Quick Start: konfirmasi mulai membuat draft atomik dan timer dimulai saat itu; jika draft tersedia, tawarkan lanjutkan atau buang.
-- [ ] Implementasikan Library dengan search substring case-insensitive dan filter kelompok otot AND; pertahankan search/filter saat membuka detail lalu kembali. (Pencarian, filter, dan detail gerakan tersedia di dialog workout; audit rotasi/Back masih perlu.)
+- [x] Implementasikan Start Workout dan Quick Start: konfirmasi mulai membuat draft atomik dan timer dimulai saat itu; jika draft tersedia, tawarkan lanjutkan atau buang.
+- [x] Implementasikan Library dengan search substring case-insensitive dan filter kelompok otot AND; pertahankan search/filter saat membuka detail lalu kembali. (State dialog saveable; uji rotasi visual belum dilakukan.)
 - [x] Implementasikan Filters dengan pilihan tunggal, Terapkan, Reset, dan hasil kosong yang tidak menghapus pencarian.
 - [x] Implementasikan Exercise Details beserta nama, kelompok otot, alat, petunjuk, riwayat terakhir, dan aksi tambah.
 - [x] Cegah exercise ID yang sama dibuat dua kali dalam satu sesi; hapus exercise draft dengan konfirmasi jika sudah berisi set.
@@ -75,8 +75,8 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [x] Implementasikan edit/hapus set dengan ID stabil, penomoran ulang atomik, dan total yang selalu dihitung ulang dari data sumber.
 - [x] Hitung set, repetisi, jumlah exercise valid, volume per set/exercise/sesi dari set tersimpan; beban 0 tetap dihitung sebagai set dan repetisi.
 - [ ] Implementasikan timer dari startedAt, tampilan HH:mm:ss, rotasi/background tanpa reset, pemulihan ACTIVE setelah process death, serta clock yang bisa diinjeksi.
-- [ ] Implementasikan REVIEW saat Finish: tolak sesi tanpa set valid, bekukan endedAt/durasi, dan tangani perubahan input yang belum disimpan.
-- [ ] Buat Summary dengan durasi, exercise, set, repetisi, volume, status PR, kembali untuk koreksi, dan simpan sesi.
+- [x] Implementasikan REVIEW saat Finish: tolak sesi tanpa set valid, bekukan endedAt/durasi, dan tangani perubahan input yang belum disimpan.
+- [x] Buat Summary dengan durasi, exercise, set, repetisi, volume, status PR, kembali untuk koreksi, dan simpan sesi.
 - [x] Finalisasi REVIEW ke COMPLETED dalam satu transaksi Room bersama snapshot PR dan penghapusan slot draft; retry harus idempoten dan tidak menggandakan sesi.
 - [x] Implementasikan discard draft ACTIVE/REVIEW dengan konfirmasi dan transaksi; draft yang dibuang tidak masuk history, analytics, PR, atau referensi.
 

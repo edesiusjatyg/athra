@@ -86,6 +86,7 @@ fun AthraNavGraph(
         }
         composable(Routes.PreWorkout.route) {
             PreWorkoutScreen(
+                hasDraft = workoutState.draft != null,
                 onBack = { navController.popBackStack() },
                 onBeginSession = {
                     scope.launch {
@@ -94,6 +95,16 @@ fun AthraNavGraph(
                 },
                 onQuickStart = {
                     scope.launch {
+                        if (onStartWorkout() != null) navController.navigate(Routes.LiveWorkout.route)
+                    }
+                },
+                onContinueDraft = {
+                    onResumeWorkout()
+                    if (workoutState.draft != null) navController.navigate(Routes.LiveWorkout.route)
+                },
+                onDiscardDraft = {
+                    scope.launch {
+                        workoutState.draft?.let { workoutViewModel.discard(it.session.id) }
                         if (onStartWorkout() != null) navController.navigate(Routes.LiveWorkout.route)
                     }
                 },
