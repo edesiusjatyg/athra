@@ -43,7 +43,7 @@ class WorkoutViewModel(
         }
         viewModelScope.launch {
             repository.observeHistory(userId).collectLatest {
-                mutableState.value = mutableState.value.copy(recentSessions = it.take(3))
+                mutableState.value = mutableState.value.copy(recentSessions = it)
             }
         }
         refreshDraft()

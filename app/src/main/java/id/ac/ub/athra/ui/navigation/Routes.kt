@@ -4,5 +4,7 @@ sealed class Routes(val route: String) {
     object Home        : Routes("home")
     object PreWorkout  : Routes("pre_workout")
     object LiveWorkout : Routes("live_workout")
-    // tambah screen baru di sini aja
+    object Progress : Routes("progress")
+    object History : Routes("history")
+    object Profile : Routes("profile")
 }

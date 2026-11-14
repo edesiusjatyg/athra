@@ -1,6 +1,9 @@
 package id.ac.ub.athra.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.NavHostController
@@ -11,8 +14,24 @@ import id.ac.ub.athra.ui.screens.HomeScreen
 import id.ac.ub.athra.ui.screens.PreWorkoutScreen
 import id.ac.ub.athra.ui.workout.WorkoutViewModel
 import id.ac.ub.athra.ui.workout.WorkoutFlowScreen
+import id.ac.ub.athra.ui.screens.ProgressScreen
+import id.ac.ub.athra.ui.screens.HistoryScreen
+import id.ac.ub.athra.ui.screens.AthraBottomNav
+import id.ac.ub.athra.ui.theme.Background
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun AthraNavGraph(
     navController: NavHostController,
     userName: String,
@@ -20,8 +39,10 @@ fun AthraNavGraph(
     workoutViewModel: WorkoutViewModel,
     onStartWorkout: suspend () -> String?,
     onResumeWorkout: () -> Unit,
+    onSignOut: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    var periodDays by rememberSaveable { mutableIntStateOf(7) }
     NavHost(
         navController = navController,
         startDestination = Routes.Home.route,
@@ -37,8 +58,18 @@ fun AthraNavGraph(
                     onResumeWorkout()
                     workoutState.draft?.let { navController.navigate(Routes.LiveWorkout.route) }
                 },
-                onViewAll = { },
+                onViewAll = { navController.navigate(Routes.History.route) },
+                onNavigate = { tab ->
+                    when (tab) {
+                        0 -> navController.navigate(Routes.Home.route) { popUpTo(Routes.Home.route) { inclusive = false }; launchSingleTop = true }
+                        1 -> navController.navigate(Routes.PreWorkout.route) { launchSingleTop = true }
+                        2 -> navController.navigate(Routes.Progress.route) { launchSingleTop = true }
+                        3 -> navController.navigate(Routes.Profile.route) { launchSingleTop = true }
+                    }
+                },
             )
+            // History is opened from the Home section action and shares the local completed-session stream.
+            //
         }
         composable(Routes.PreWorkout.route) {
             PreWorkoutScreen(
@@ -71,6 +102,57 @@ fun AthraNavGraph(
                 onDiscard = workoutViewModel::discard,
                 onExit = { navController.popBackStack(Routes.Home.route, false) },
             )
+        }
+        composable(Routes.Progress.route) {
+            ProgressScreen(
+                analytics = workoutState.analytics,
+                periodDays = periodDays,
+                onPeriodChange = { days -> periodDays = days; workoutViewModel.refreshAnalytics(days) },
+                onNavigate = { tab ->
+                    when (tab) {
+                        0 -> navController.navigate(Routes.Home.route) { popUpTo(Routes.Home.route) { inclusive = false }; launchSingleTop = true }
+                        1 -> navController.navigate(Routes.PreWorkout.route) { launchSingleTop = true }
+                        2 -> Unit
+                        3 -> navController.navigate(Routes.Profile.route) { launchSingleTop = true }
+                    }
+                },
+            )
+        }
+        composable(Routes.History.route) {
+            HistoryScreen(
+                sessions = workoutState.recentSessions,
+                onOpen = { },
+                onNavigate = { tab ->
+                    when (tab) {
+                        0 -> navController.navigate(Routes.Home.route) { launchSingleTop = true }
+                        1 -> navController.navigate(Routes.PreWorkout.route) { launchSingleTop = true }
+                        2 -> navController.navigate(Routes.Progress.route) { launchSingleTop = true }
+                        3 -> navController.navigate(Routes.Profile.route) { launchSingleTop = true }
+                    }
+                },
+            )
+        }
+        composable(Routes.Profile.route) {
+            androidx.compose.material3.Scaffold(
+                containerColor = Background,
+                bottomBar = {
+                    AthraBottomNav(selected = 3) { tab ->
+                        when (tab) {
+                            0 -> navController.navigate(Routes.Home.route) { launchSingleTop = true }
+                            1 -> navController.navigate(Routes.PreWorkout.route) { launchSingleTop = true }
+                            2 -> navController.navigate(Routes.Progress.route) { launchSingleTop = true }
+                            3 -> Unit
+                        }
+                    }
+                },
+                topBar = { TopAppBar(title = { Text("Profil") }) },
+            ) { insets ->
+                Column(Modifier.padding(insets).padding(20.dp)) {
+                    Text(userName, style = MaterialTheme.typography.headlineMedium)
+                    Text("Data latihan tersimpan di perangkat ini.")
+                    TextButton(onClick = onSignOut) { Text("Keluar") }
+                }
+            }
         }
     }
 }

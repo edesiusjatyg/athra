@@ -39,6 +39,10 @@ fun WorkoutFlowScreen(
     var reps by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
     var showLibrary by remember { mutableStateOf(false) }
+    var search by rememberSaveable { mutableStateOf("") }
+    var muscleFilter by rememberSaveable { mutableStateOf("Semua") }
+    var filterMenu by remember { mutableStateOf(false) }
+    var detailExerciseId by remember { mutableStateOf<String?>(null) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(draft.session.startedAt, draft.session.status) {
         while (draft.session.status == SessionStatus.ACTIVE) {
@@ -118,14 +122,47 @@ fun WorkoutFlowScreen(
 
     if (showLibrary) AlertDialog(
         onDismissRequest = { showLibrary = false },
-        title = { Text("Pilih gerakan") },
+        title = { Text(if (detailExerciseId == null) "Pilih gerakan" else "Detail gerakan") },
         text = {
-            LazyColumn { items(state.catalog) { exercise ->
-                Text(exercise.name, modifier = Modifier.fillMaxWidth().clickable {
-                    scope.launch { onAddExercise(draft.session.id, exercise.id); exerciseId = exercise.id; showLibrary = false }
-                }.padding(vertical = 12.dp))
-            } }
+            val detail = state.catalog.firstOrNull { it.id == detailExerciseId }
+            if (detail != null) {
+                Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                    Text(detail.name, style = MaterialTheme.typography.titleLarge)
+                    Text("${detail.primaryMuscleGroup} · ${detail.equipment}", color = MaterialTheme.colorScheme.secondary)
+                    Spacer(Modifier.height(12.dp))
+                    Text(detail.instructions)
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = {
+                        scope.launch { onAddExercise(draft.session.id, detail.id); exerciseId = detail.id; detailExerciseId = null; showLibrary = false }
+                    }) { Text("Tambah ke sesi") }
+                    TextButton(onClick = { detailExerciseId = null }) { Text("Kembali ke katalog") }
+                }
+            } else Column {
+                OutlinedTextField(search, { search = it }, label = { Text("Cari gerakan") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Box {
+                    TextButton(onClick = { filterMenu = true }) { Text("Kelompok otot: $muscleFilter ▾") }
+                    DropdownMenu(expanded = filterMenu, onDismissRequest = { filterMenu = false }) {
+                        listOf("Semua", "Back", "Chest", "Legs", "Arms", "Shoulders", "Core").forEach { group ->
+                            DropdownMenuItem(text = { Text(group) }, onClick = { muscleFilter = group; filterMenu = false })
+                        }
+                        DropdownMenuItem(text = { Text("Reset") }, onClick = { muscleFilter = "Semua"; search = ""; filterMenu = false })
+                    }
+                }
+                val matches = state.catalog.filter { exercise ->
+                    exercise.name.contains(search.trim(), ignoreCase = true) &&
+                        (muscleFilter == "Semua" || exercise.primaryMuscleGroup.equals(muscleFilter, ignoreCase = true))
+                }
+                if (matches.isEmpty()) {
+                    Text("Gerakan tidak ditemukan.")
+                } else LazyColumn(Modifier.heightIn(max = 280.dp)) {
+                    items(matches) { exercise ->
+                        Text(exercise.name, modifier = Modifier.fillMaxWidth().clickable {
+                            detailExerciseId = exercise.id
+                        }.padding(vertical = 12.dp))
+                    }
+                }
+            }
         },
-        confirmButton = { TextButton(onClick = { showLibrary = false }) { Text("Tutup") } },
+        confirmButton = { TextButton(onClick = { detailExerciseId = null; showLibrary = false }) { Text("Tutup") } },
     )
 }

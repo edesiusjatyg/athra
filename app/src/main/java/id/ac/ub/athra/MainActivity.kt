@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
                             workoutViewModel = workoutViewModel,
                             onStartWorkout = { workoutViewModel.start() },
                             onResumeWorkout = { workoutViewModel.refreshDraft() },
+                            onSignOut = authViewModel::signOut,
                         )
                     }
                 }

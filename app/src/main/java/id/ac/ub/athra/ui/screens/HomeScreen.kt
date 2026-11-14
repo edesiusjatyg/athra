@@ -44,10 +44,11 @@ fun HomeScreen(
     onStartWorkout: () -> Unit = {},
     onResumeWorkout: () -> Unit = {},
     onViewAll: () -> Unit = {},
+    onNavigate: (Int) -> Unit = {},
 ) {
     Scaffold(
         containerColor = Background,
-        bottomBar = { AthraBottomNav(selected = 0) },
+        bottomBar = { AthraBottomNav(selected = 0, onSelect = onNavigate) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -97,7 +98,7 @@ fun HomeScreen(
             Spacer(Modifier.height(12.dp))
             if (recentSessions.isEmpty()) {
                 Text("Belum ada sesi. Mulai latihan pertamamu.", color = Secondary)
-            } else recentSessions.forEach { session ->
+            } else recentSessions.take(3).forEach { session ->
                 RecentSessionRow(
                     name = session.name,
                     meta = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
@@ -294,8 +295,8 @@ private fun RecentSessionRow(name: String, meta: String) {
 // ─── Bottom Navigation ───────────────────────────────────────────────────────
 
 @Composable
-fun AthraBottomNav(selected: Int) {
-    val items = listOf("Home", "Train", "Progress", "Profile")
+fun AthraBottomNav(selected: Int, onSelect: (Int) -> Unit) {
+    val items = listOf("Beranda", "Latihan", "Progress", "Profil")
     NavigationBar(
         containerColor = Surface,
         tonalElevation = 0.dp,
@@ -308,7 +309,7 @@ fun AthraBottomNav(selected: Int) {
         items.forEachIndexed { index, label ->
             NavigationBarItem(
                 selected = index == selected,
-                onClick = {},
+                onClick = { onSelect(index) },
                 label = {
                     Text(
                         text = label,

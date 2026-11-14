@@ -2,6 +2,10 @@
 
 Checklist ini diturunkan dari PRD v1.0 (14 November 2026). Urutan mengikuti dependensi implementasi; keputusan produk dan acceptance criteria tetap merujuk ke PRD.md.
 
+## Status implementasi terkini
+
+Fondasi, autentikasi awal, penyimpanan lokal, alur workout draft sampai Summary/PR, dan Home berbasis Room sudah tersedia. Build debug terakhir berhasil. Progress dan History sedang disambungkan; daftar di bawah menjadi sumber status rinci dan item yang belum terverifikasi tetap terbuka.
+
 ## Hasil audit awal
 
 Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
@@ -15,11 +19,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 ### Kesenjangan utama
 
 - Navigasi dimulai langsung di Home; layar Sign In/Sign Up dan alur autentikasi belum ada.
-- Belum ada Room, DataStore, Firebase Authentication, katalog exercise, repository, domain model, atau ViewModel.
-- Tiga layar yang ada memakai data contoh. Timer, statistik, set, dan sesi tidak berubah atau tersimpan.
-- Tombol tab bawah, View all, Quick start, kartu suggested workout, sesi terbaru, dan Up next belum menjalankan aksi yang sesuai.
-- Library, Filters, Exercise Details, Summary, Analytics, Profile, Preferences, History, dan Edit Profile belum dibuat.
-- UI masih berbahasa Inggris; ada tanggal/nama/angka contoh dan label workout statis.
+- Snapshot ini menjelaskan kondisi saat audit awal dan tidak merepresentasikan seluruh kondisi saat ini.
 - applicationId dan namespace saat ini com.example.athra, sedangkan PRD menetapkan id.ac.ub.athra. minSdk saat ini 24, sedangkan PRD menetapkan API 26.
 - Tes yang ada hanya tes template Android/JUnit. Belum ada README, acceptance test, bukti runtime, atau APK terverifikasi.
 
@@ -30,7 +30,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 - [x] Tambahkan dependency yang diperlukan melalui version catalog; hindari versi dinamis.
 - [x] Tambahkan konfigurasi Firebase Authentication Email/Password dan Auth Emulator yang hanya aktif di debug dengan flag eksplisit.
 - [x] Tambahkan INTERNET permission hanya untuk autentikasi; pisahkan konfigurasi debug dan release, tanpa fake login atau seed history di release.
-- [ ] Siapkan struktur UI/data/domain sederhana, AppContainer dan factory ViewModel; pertahankan single Activity.
+- [x] Siapkan struktur UI/data/domain sederhana, AppContainer dan factory ViewModel; pertahankan single Activity.
 - [ ] Buat README awal berisi setup Android SDK/JDK, Firebase/Auth Emulator, build, test, pemasangan APK, operasi offline, dan batas penyimpanan lokal.
 
 ## 2. Model domain, penyimpanan, dan katalog
@@ -55,7 +55,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 
 ## 4. Navigasi dan fondasi state UI
 
-- [ ] Buat Main graph dengan root Home, Train, Progress, Profile dan bottom navigation yang benar-benar berpindah tab tanpa menggandakan destination.
+- [ ] Buat Main graph dengan root Home, Train, Progress, Profile dan bottom navigation yang benar-benar berpindah tab tanpa menggandakan destination. (Keempat tab tersambung; audit back stack dan singleTop masih perlu.)
 - [ ] Buat workout graph untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary.
 - [ ] Tambahkan route History, Workout Detail, Edit Profile, dan Preferences; validasi UID saat membuka detail lewat ID route.
 - [ ] Scope satu WorkoutViewModel ke workout graph agar Library, Active, dan Summary membaca sesi yang sama.
@@ -66,7 +66,7 @@ Audit dilakukan lewat inspeksi statis repo. Build dan tes belum dijalankan.
 ## 5. Workout end-to-end
 
 - [ ] Implementasikan Start Workout dan Quick Start: konfirmasi mulai membuat draft atomik dan timer dimulai saat itu; jika draft tersedia, tawarkan lanjutkan atau buang.
-- [ ] Implementasikan Library dengan search substring case-insensitive dan filter kelompok otot AND; pertahankan search/filter saat membuka detail lalu kembali.
+- [ ] Implementasikan Library dengan search substring case-insensitive dan filter kelompok otot AND; pertahankan search/filter saat membuka detail lalu kembali. (Pencarian, filter, dan detail gerakan tersedia di dialog workout; audit rotasi/Back masih perlu.)
 - [ ] Implementasikan Filters dengan pilihan tunggal, Terapkan, Reset, dan hasil kosong yang tidak menghapus pencarian.
 - [ ] Implementasikan Exercise Details beserta nama, kelompok otot, alat, petunjuk, riwayat terakhir, dan aksi tambah.
 - [ ] Cegah exercise ID yang sama dibuat dua kali dalam satu sesi; hapus exercise draft dengan konfirmasi jika sudah berisi set.
