@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -18,6 +19,8 @@ import id.ac.ub.athra.ui.auth.AuthViewModel
 import id.ac.ub.athra.ui.auth.AuthViewModelFactory
 import id.ac.ub.athra.ui.navigation.AthraNavGraph
 import id.ac.ub.athra.ui.theme.AthraTheme
+import id.ac.ub.athra.ui.workout.WorkoutViewModel
+import id.ac.ub.athra.ui.workout.WorkoutViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,8 +40,23 @@ class MainActivity : ComponentActivity() {
                     }
                     state.user == null -> AuthScreen(state, authViewModel::signIn, authViewModel::signUp)
                     else -> {
+                        val user = state.user!!
+                        val workoutViewModel = remember(user.uid) {
+                            ViewModelProvider(
+                                this@MainActivity,
+                                WorkoutViewModelFactory(user.uid, container.workoutRepository),
+                            ).get("workout_${user.uid}", WorkoutViewModel::class.java)
+                        }
+                        val workoutState by workoutViewModel.state.collectAsState()
                         val navController = rememberNavController()
-                        AthraNavGraph(navController = navController)
+                        AthraNavGraph(
+                            navController = navController,
+                            userName = user.displayName.ifBlank { user.email.substringBefore('@') },
+                            workoutState = workoutState,
+                            workoutViewModel = workoutViewModel,
+                            onStartWorkout = { workoutViewModel.start() },
+                            onResumeWorkout = { workoutViewModel.refreshDraft() },
+                        )
                     }
                 }
             }

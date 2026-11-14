@@ -1,0 +1,118 @@
+package id.ac.ub.athra.ui.workout
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import id.ac.ub.athra.domain.calculation.calculateTotals
+import id.ac.ub.athra.domain.calculation.displayNumber
+import id.ac.ub.athra.domain.model.SessionStatus
+import id.ac.ub.athra.domain.model.WeightUnit
+import id.ac.ub.athra.domain.model.WorkoutDraft
+import id.ac.ub.athra.ui.theme.Background
+import kotlinx.coroutines.launch
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun WorkoutFlowScreen(
+    draft: WorkoutDraft,
+    state: WorkoutUiState,
+    onSaveSet: suspend (String, String, String?, String, String, WeightUnit) -> Unit,
+    onDeleteSet: suspend (String, String) -> Unit,
+    onAddExercise: suspend (String, String) -> Unit,
+    onFinish: suspend (String) -> Boolean,
+    onResume: suspend (String) -> Unit,
+    onSave: suspend (String) -> Boolean,
+    onDiscard: suspend (String) -> Unit,
+    onExit: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var exerciseId by rememberSaveable(draft.session.id) { mutableStateOf(draft.exercises.firstOrNull()?.exercise?.id.orEmpty()) }
+    var reps by rememberSaveable { mutableStateOf("") }
+    var weight by rememberSaveable { mutableStateOf("") }
+    var showLibrary by remember { mutableStateOf(false) }
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(draft.session.startedAt, draft.session.status) {
+        while (draft.session.status == SessionStatus.ACTIVE) {
+            now = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+    val totals = calculateTotals(draft)
+    val elapsed = ((draft.session.endedAt ?: now) - draft.session.startedAt).coerceAtLeast(0) / 1000
+    val timer = "%02d:%02d:%02d".format(elapsed / 3600, elapsed % 3600 / 60, elapsed % 60)
+    val selected = draft.exercises.firstOrNull { it.exercise.id == exerciseId }
+
+    Scaffold(containerColor = Background, topBar = {
+        TopAppBar(title = { Text(if (draft.session.status == SessionStatus.REVIEW) "Ringkasan" else "Workout aktif") },
+            navigationIcon = { TextButton(onClick = onExit) { Text("Kembali") } },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Background))
+    }) { inset ->
+        Column(Modifier.fillMaxSize().padding(inset).verticalScroll(rememberScrollState()).padding(20.dp)) {
+            Text(draft.session.name, style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(8.dp))
+            Text("Durasi  $timer", style = MaterialTheme.typography.titleLarge)
+            Text("${totals.setCount} set · ${totals.repCount} repetisi · ${displayNumber(totals.volumeKg)} kg", color = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.height(20.dp))
+
+            if (draft.session.status == SessionStatus.REVIEW) {
+                Text("${totals.exerciseCount} gerakan", style = MaterialTheme.typography.titleMedium)
+                draft.exercises.filter { it.sets.isNotEmpty() }.forEach { item ->
+                    Text("${item.exercise.name}: ${item.sets.maxOf { it.weightKg }} kg tertinggi", modifier = Modifier.padding(top = 8.dp))
+                }
+                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Spacer(Modifier.height(24.dp))
+                Button(onClick = { scope.launch { if (onSave(draft.session.id)) onExit() } }, modifier = Modifier.fillMaxWidth()) { Text("Simpan sesi") }
+                TextButton(onClick = { scope.launch { onResume(draft.session.id) } }) { Text("Kembali memperbaiki") }
+                TextButton(onClick = { scope.launch { onDiscard(draft.session.id); onExit() } }) { Text("Buang sesi") }
+            } else {
+                Text("Gerakan", style = MaterialTheme.typography.titleMedium)
+                draft.exercises.forEach { item ->
+                    TextButton(onClick = { exerciseId = item.exercise.id }) { Text(item.exercise.name) }
+                    item.sets.forEach { set ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("${set.number}.  ${set.weightKg} kg × ${set.reps}")
+                            TextButton(onClick = { scope.launch { onDeleteSet(draft.session.id, set.id) } }) { Text("Hapus") }
+                        }
+                    }
+                }
+                TextButton(onClick = { showLibrary = true }) { Text("+ Tambah gerakan") }
+                if (selected != null) {
+                    Text("Catat set · ${selected.exercise.name}", style = MaterialTheme.typography.titleMedium)
+                    OutlinedTextField(reps, { reps = it }, label = { Text("Repetisi") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(weight, { weight = it }, label = { Text("Beban (kg)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Button(onClick = {
+                        scope.launch {
+                            onSaveSet(draft.session.id, selected.exercise.id, null, reps, weight, WeightUnit.KG)
+                            reps = ""; weight = ""
+                        }
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Simpan set") }
+                }
+                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = { scope.launch { onFinish(draft.session.id) } }, modifier = Modifier.fillMaxWidth()) { Text("Selesai dan tinjau") }
+                TextButton(onClick = { scope.launch { onDiscard(draft.session.id); onExit() } }) { Text("Buang sesi") }
+            }
+        }
+    }
+
+    if (showLibrary) AlertDialog(
+        onDismissRequest = { showLibrary = false },
+        title = { Text("Pilih gerakan") },
+        text = {
+            LazyColumn { items(state.catalog) { exercise ->
+                Text(exercise.name, modifier = Modifier.fillMaxWidth().clickable {
+                    scope.launch { onAddExercise(draft.session.id, exercise.id); exerciseId = exercise.id; showLibrary = false }
+                }.padding(vertical = 12.dp))
+            } }
+        },
+        confirmButton = { TextButton(onClick = { showLibrary = false }) { Text("Tutup") } },
+    )
+}

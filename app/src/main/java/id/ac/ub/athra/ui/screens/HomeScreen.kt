@@ -24,13 +24,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.ac.ub.athra.ui.components.*
 import id.ac.ub.athra.ui.theme.*
+import id.ac.ub.athra.domain.model.AnalyticsSummary
+import id.ac.ub.athra.domain.model.WorkoutDraft
+import id.ac.ub.athra.domain.model.WorkoutSession
+import id.ac.ub.athra.domain.calculation.displayNumber
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 @Composable
 fun HomeScreen(
-    userName: String = "Widodo",
+    userName: String,
+    draft: WorkoutDraft?,
+    recentSessions: List<WorkoutSession>,
+    analytics: AnalyticsSummary?,
     onStartWorkout: () -> Unit = {},
+    onResumeWorkout: () -> Unit = {},
     onViewAll: () -> Unit = {},
 ) {
     Scaffold(
@@ -52,39 +64,47 @@ fun HomeScreen(
             Spacer(Modifier.height(20.dp))
 
             // ── Greeting ──
-            Text(
-                text = "TUESDAY, 13 OCTOBER",
-                style = MaterialTheme.typography.labelSmall.copy(color = Secondary),
-            )
+            val today = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale("id", "ID"))
+                .format(Instant.now().atZone(ZoneId.systemDefault()))
+            Text(text = today.uppercase(Locale("id", "ID")), style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "Good morning, $userName",
+                text = "Halo, $userName",
                 style = MaterialTheme.typography.headlineLarge.copy(color = Ink),
             )
             Text(
-                text = "Keep your momentum going.",
+                text = "Latihanmu tersimpan di perangkat ini.",
                 style = MaterialTheme.typography.bodyMedium.copy(color = Secondary),
             )
 
             Spacer(Modifier.height(20.dp))
 
             // ── Next workout card ──
-            NextWorkoutCard(onStartWorkout = onStartWorkout)
+            NextWorkoutCard(
+                hasDraft = draft != null,
+                onStartWorkout = if (draft != null) onResumeWorkout else onStartWorkout,
+            )
 
             Spacer(Modifier.height(24.dp))
 
             // ── This week stats ──
-            ThisWeekSection()
+            ThisWeekSection(analytics)
 
             Spacer(Modifier.height(24.dp))
 
             // ── Recent sessions ──
-            SectionHeader(title = "Recent sessions", action = "View all", onAction = onViewAll)
+            SectionHeader(title = "Sesi terbaru", action = "Lihat semua", onAction = onViewAll)
             Spacer(Modifier.height(12.dp))
-            RecentSessionRow(
-                name = "Evening Pull Day",
-                meta = "Today · 72 min · 5 exercises",
-            )
+            if (recentSessions.isEmpty()) {
+                Text("Belum ada sesi. Mulai latihan pertamamu.", color = Secondary)
+            } else recentSessions.forEach { session ->
+                RecentSessionRow(
+                    name = session.name,
+                    meta = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
+                        .format(Instant.ofEpochMilli(session.endedAt ?: session.startedAt).atZone(ZoneId.systemDefault())),
+                )
+                Spacer(Modifier.height(8.dp))
+            }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -137,7 +157,7 @@ private fun HomeTopBar() {
 // ─── Next Workout Card ───────────────────────────────────────────────────────
 
 @Composable
-private fun NextWorkoutCard(onStartWorkout: () -> Unit) {
+private fun NextWorkoutCard(hasDraft: Boolean, onStartWorkout: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,7 +172,7 @@ private fun NextWorkoutCard(onStartWorkout: () -> Unit) {
     ) {
         Column {
             Text(
-                text = "YOUR NEXT WORKOUT",
+                text = if (hasDraft) "SESI BELUM SELESAI" else "MULAI LATIHAN",
                 style = MaterialTheme.typography.labelSmall.copy(
                     color = Accent,
                     fontWeight = FontWeight.SemiBold,
@@ -161,15 +181,15 @@ private fun NextWorkoutCard(onStartWorkout: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Evening Pull Day",
+                text = if (hasDraft) "Lanjutkan workout" else "Siap berlatih?",
                 style = MaterialTheme.typography.headlineMedium.copy(color = Ink),
             )
             Text(
-                text = "5 exercises · Back & biceps",
+                text = if (hasDraft) "Draft tersimpan di perangkat ini" else "Buat sesi dan pilih gerakan",
                 style = MaterialTheme.typography.bodyMedium.copy(color = Secondary),
             )
             Spacer(Modifier.height(16.dp))
-            AthraButton(label = "Start workout", onClick = onStartWorkout)
+            AthraButton(label = if (hasDraft) "Lanjutkan sesi" else "Mulai workout", onClick = onStartWorkout)
         }
     }
 }
@@ -177,7 +197,7 @@ private fun NextWorkoutCard(onStartWorkout: () -> Unit) {
 // ─── This Week Section ───────────────────────────────────────────────────────
 
 @Composable
-private fun ThisWeekSection() {
+private fun ThisWeekSection(analytics: AnalyticsSummary?) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -185,11 +205,11 @@ private fun ThisWeekSection() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "This week",
+                text = "7 hari terakhir",
                 style = MaterialTheme.typography.headlineSmall.copy(color = Ink),
             )
             Text(
-                text = "OCT 12 – 18",
+                text = "Sesi, set, dan volume",
                 style = MaterialTheme.typography.labelSmall.copy(color = Secondary),
             )
         }
@@ -198,9 +218,9 @@ private fun ThisWeekSection() {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            StatCard(value = "04", label = "Workouts",   modifier = Modifier.weight(1f))
-            StatCard(value = "12", label = "Day streak", modifier = Modifier.weight(1f))
-            StatCard(value = "24.8k", label = "Volume · kg", modifier = Modifier.weight(1f))
+            StatCard(value = "%02d".format(analytics?.sessionCount ?: 0), label = "Sesi", modifier = Modifier.weight(1f))
+            StatCard(value = "%02d".format(analytics?.setCount ?: 0), label = "Set", modifier = Modifier.weight(1f))
+            StatCard(value = analytics?.volumeKg?.let(::displayNumber) ?: "0", label = "Volume · kg", modifier = Modifier.weight(1f))
         }
     }
 }
