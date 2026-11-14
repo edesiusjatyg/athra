@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "690b011ec5f8e621948e387db2d1a8d1",
+    "identityHash": "6304cd2703d97339f8062561b35eb563",
     "entities": [
       {
         "tableName": "local_profiles",
@@ -191,6 +191,17 @@
             "userId"
           ]
         },
+        "indices": [
+          {
+            "name": "index_active_workouts_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_active_workouts_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          }
+        ],
         "foreignKeys": [
           {
             "table": "workout_sessions",
@@ -420,7 +431,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '690b011ec5f8e621948e387db2d1a8d1')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6304cd2703d97339f8062561b35eb563')"
     ]
   }
 }

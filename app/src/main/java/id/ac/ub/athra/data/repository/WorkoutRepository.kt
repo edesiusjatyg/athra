@@ -128,6 +128,76 @@ class WorkoutRepository(
         workout.deleteDraft(userId, sessionId)
     }
 
+    suspend fun finalizeWorkout(userId: String, sessionId: String): CompletedWorkout = database.withTransaction {
+        val session = workout.getSession(sessionId)?.toModel()?.takeIf { it.userId == userId }
+            ?: error("Sesi tidak tersedia.")
+        if (session.status == SessionStatus.COMPLETED) return@withTransaction loadCompleted(userId, sessionId)!!
+        require(session.status == SessionStatus.REVIEW && session.endedAt != null) { "Sesi belum siap disimpan." }
+        val draft = loadDraft(userId, sessionId) ?: error("Sesi tidak tersedia.")
+        require(calculateTotals(draft).setCount > 0) { "Tambahkan minimal satu set yang valid." }
+        val completedBefore = workout.getCompleted(userId).filter { it.sessionId != sessionId }
+        val records = mutableListOf<PersonalRecord>()
+        draft.exercises.filter { it.sets.isNotEmpty() }.forEach { current ->
+            val previousWeights = mutableListOf<BigDecimal>()
+            completedBefore.forEach { historicalSession ->
+                workout.getSessionExercises(historicalSession.sessionId)
+                    .filter { it.exerciseId == current.exercise.id }
+                    .forEach { item -> workout.getSets(item.sessionExerciseId).forEach { previousWeights += it.weightKg } }
+            }
+            personalRecord(current.exercise.id, current.sets.map { it.weightKg }, previousWeights.maxOrNull())?.let(records::add)
+        }
+        workout.insertSnapshots(records.map { record ->
+            PersonalRecordSnapshotEntity(
+                sessionId = sessionId,
+                exerciseId = record.exerciseId,
+                previousMaxKg = record.previousMaxKg,
+                currentMaxKg = record.currentMaxKg,
+                status = record.status.name,
+            )
+        })
+        workout.updateSession(session.copy(status = SessionStatus.COMPLETED).toEntity())
+        workout.deleteActive(userId, sessionId)
+        loadCompleted(userId, sessionId)!!
+    }
+
+    suspend fun historicalMax(userId: String, exerciseId: String, excludingSessionId: String? = null): BigDecimal? {
+        val weights = mutableListOf<BigDecimal>()
+        workout.getCompleted(userId).filter { it.sessionId != excludingSessionId }.forEach { session ->
+            workout.getSessionExercises(session.sessionId).filter { it.exerciseId == exerciseId }.forEach { item ->
+                workout.getSets(item.sessionExerciseId).forEach { weights += it.weightKg }
+            }
+        }
+        return weights.maxOrNull()
+    }
+
+    suspend fun latestReference(userId: String, exerciseId: String): ExerciseReference? {
+        for (session in workout.getCompleted(userId)) {
+            val item = workout.getSessionExercise(session.sessionId, exerciseId) ?: continue
+            val sets = workout.getSets(item.sessionExerciseId).map { it.toModel() }
+            if (sets.isNotEmpty()) {
+                val volume = sets.fold(BigDecimal.ZERO) { total, set ->
+                    total.add(set.weightKg.multiply(BigDecimal.valueOf(set.reps.toLong())))
+                }
+                return ExerciseReference(session.toModel(), sets, volume)
+            }
+        }
+        return null
+    }
+
+    suspend fun getCompletedWorkout(userId: String, sessionId: String): CompletedWorkout? =
+        database.withTransaction { loadCompleted(userId, sessionId) }
+
+    private suspend fun loadCompleted(userId: String, sessionId: String): CompletedWorkout? {
+        val session = workout.getSession(sessionId)?.toModel()?.takeIf {
+            it.userId == userId && it.status == SessionStatus.COMPLETED
+        } ?: return null
+        val draft = loadContents(session) ?: return null
+        val records = workout.getSnapshots(sessionId).map {
+            PersonalRecord(it.exerciseId, it.previousMaxKg, it.currentMaxKg, PersonalRecordStatus.valueOf(it.status))
+        }
+        return CompletedWorkout(draft, records)
+    }
+
     private suspend fun requireOwned(userId: String, sessionId: String, states: Set<SessionStatus>): WorkoutSession {
         val session = workout.getSession(sessionId)?.toModel() ?: error("Sesi tidak tersedia.")
         require(session.userId == userId) { "Sesi tidak tersedia." }
@@ -141,6 +211,11 @@ class WorkoutRepository(
     private suspend fun loadDraft(userId: String, sessionId: String): WorkoutDraft? {
         val session = session(userId, sessionId)
         if (session.status == SessionStatus.COMPLETED) return null
+        return loadContents(session)
+    }
+
+    private suspend fun loadContents(session: WorkoutSession): WorkoutDraft? {
+        val sessionId = session.id
         val rows = workout.getSessionExercises(sessionId)
         val domainExercises = rows.mapNotNull { row ->
             val exercise = exercises.get(row.exerciseId)?.toModel() ?: return@mapNotNull null

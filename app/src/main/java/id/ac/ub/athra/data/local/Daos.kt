@@ -35,7 +35,7 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_sessions WHERE sessionId = :sessionId")
     suspend fun getSession(sessionId: String): WorkoutSessionEntity?
 
-    @Query("SELECT * FROM workout_sessions WHERE userId = :userId ORDER BY endedAt DESC, createdAt DESC, sessionId")
+    @Query("SELECT * FROM workout_sessions WHERE userId = :userId AND status = 'COMPLETED' ORDER BY endedAt DESC, createdAt DESC, sessionId")
     fun observeHistory(userId: String): Flow<List<WorkoutSessionEntity>>
 
     @Query("SELECT * FROM workout_sessions WHERE userId = :userId AND status = 'COMPLETED' ORDER BY endedAt DESC, createdAt DESC, sessionId")

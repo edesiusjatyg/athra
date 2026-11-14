@@ -41,6 +41,11 @@ data class WorkoutDraft(
     val exercises: List<WorkoutExercise>,
 )
 
+data class CompletedWorkout(
+    val draft: WorkoutDraft,
+    val personalRecords: List<PersonalRecord>,
+)
+
 data class WorkoutTotals(
     val exerciseCount: Int,
     val setCount: Int,
