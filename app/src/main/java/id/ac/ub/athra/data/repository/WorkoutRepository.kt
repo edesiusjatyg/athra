@@ -7,9 +7,14 @@ import id.ac.ub.athra.domain.calculation.calculateTotals
 import id.ac.ub.athra.domain.calculation.parseReps
 import id.ac.ub.athra.domain.calculation.parseWeightKg
 import id.ac.ub.athra.domain.calculation.personalRecord
+import id.ac.ub.athra.domain.calculation.calculateAnalytics
+import id.ac.ub.athra.domain.calculation.AnalyticsInputExercise
+import id.ac.ub.athra.domain.calculation.AnalyticsInputSession
 import id.ac.ub.athra.domain.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import java.math.BigDecimal
 import java.util.UUID
@@ -20,6 +25,56 @@ class WorkoutRepository(
 ) {
     private val workout get() = database.workoutDao()
     private val exercises get() = database.exerciseDao()
+
+    fun observeCatalog(): Flow<List<Exercise>> = exercises.observeAll().map { rows -> rows.map { it.toModel() } }
+
+    fun observeHistory(userId: String): Flow<List<WorkoutSession>> =
+        workout.observeHistory(userId).map { rows -> rows.map { it.toModel() } }
+
+    suspend fun getProfile(userId: String): LocalProfileEntity? = database.profileDao().get(userId)
+
+    suspend fun updateProfileName(userId: String, name: String) {
+        val cleanName = name.trim()
+        require(cleanName.isNotEmpty()) { "Nama tidak boleh kosong." }
+        val profile = database.profileDao().get(userId) ?: error("Profil tidak tersedia.")
+        database.profileDao().upsert(profile.copy(displayName = cleanName, updatedAt = System.currentTimeMillis()))
+    }
+
+    suspend fun analytics(userId: String, periodDays: Int, zone: java.time.ZoneId, now: Long): AnalyticsSummary {
+        val sessions = workout.getCompleted(userId).map { row ->
+            val endTime = row.endedAt ?: row.startedAt
+            val items = workout.getSessionExercises(row.sessionId).mapNotNull { item ->
+                val exercise = exercises.get(item.exerciseId)?.toModel() ?: return@mapNotNull null
+                val sets = workout.getSets(item.sessionExerciseId)
+                AnalyticsInputExercise(exercise, sets.map { it.reps to it.weightKg })
+            }
+            AnalyticsInputSession(endTime, items)
+        }
+        return calculateAnalytics(sessions, now, periodDays, zone)
+    }
+
+    suspend fun previewRecords(userId: String, draft: WorkoutDraft): List<PersonalRecord> {
+        val records = mutableListOf<PersonalRecord>()
+        draft.exercises.forEach { item ->
+            personalRecord(item.exercise.id, item.sets.map { it.weightKg }, historicalMax(userId, item.exercise.id))
+                ?.let(records::add)
+        }
+        return records
+    }
+
+    suspend fun getReferenceComparisons(userId: String, exerciseId: String, currentSets: List<WorkoutSet>): List<SetComparison> {
+        val reference = latestReference(userId, exerciseId) ?: return emptyList()
+        val previousByNumber = reference.sets.associateBy { it.number }
+        return currentSets.map { current ->
+            val previous = previousByNumber[current.number]
+            SetComparison(
+                previousSet = previous,
+                currentSet = current,
+                weightDeltaKg = previous?.let { current.weightKg.subtract(it.weightKg) },
+                repsDelta = previous?.let { current.reps - it.reps },
+            )
+        }
+    }
 
     suspend fun seedCatalog() = withContext(Dispatchers.IO) {
         val json = assets.open("exercises.json").bufferedReader().use { it.readText() }
@@ -186,6 +241,8 @@ class WorkoutRepository(
 
     suspend fun getCompletedWorkout(userId: String, sessionId: String): CompletedWorkout? =
         database.withTransaction { loadCompleted(userId, sessionId) }
+
+    suspend fun getWorkoutDetail(userId: String, sessionId: String): CompletedWorkout? = getCompletedWorkout(userId, sessionId)
 
     private suspend fun loadCompleted(userId: String, sessionId: String): CompletedWorkout? {
         val session = workout.getSession(sessionId)?.toModel()?.takeIf {
