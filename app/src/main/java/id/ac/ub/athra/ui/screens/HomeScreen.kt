@@ -2,6 +2,7 @@ package id.ac.ub.athra.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,7 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Home
@@ -26,6 +27,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,6 +45,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private val IndonesianLocale = Locale.forLanguageTag("id-ID")
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
@@ -82,9 +87,9 @@ fun HomeScreen(
             Spacer(Modifier.height(20.dp))
 
             // ── Greeting ──
-            val today = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale("id", "ID"))
+            val today = DateTimeFormatter.ofPattern("EEEE, d MMMM", IndonesianLocale)
                 .format(Instant.now().atZone(ZoneId.systemDefault()))
-            Text(text = today.uppercase(Locale("id", "ID")), style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
+            Text(text = today.uppercase(IndonesianLocale), style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
             Spacer(Modifier.height(4.dp))
             Text(
                 text = "Halo, $userName",
@@ -136,7 +141,7 @@ fun HomeScreen(
                     RecentSessionRow(
                         sessionId = session.id,
                         name = session.name,
-                        meta = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("id", "ID"))
+                        meta = DateTimeFormatter.ofPattern("d MMM yyyy", IndonesianLocale)
                             .format(Instant.ofEpochMilli(session.endedAt ?: session.startedAt).atZone(ZoneId.systemDefault())),
                         onClick = { onOpenSession(session.id) },
                     )
@@ -163,12 +168,12 @@ private fun HomeTopBar(userName: String, onOpenProfile: () -> Unit) {
                 modifier = Modifier
                     .size(32.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Accent),
+                    .background(Forest),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = Background,
+                    tint = Accent,
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -186,11 +191,18 @@ private fun HomeTopBar(userName: String, onOpenProfile: () -> Unit) {
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Muted)
+                .background(Forest)
                 .semantics { contentDescription = "Buka profil" }
                 .clickable(role = Role.Button, onClick = onOpenProfile),
             contentAlignment = Alignment.Center,
-        ) { Text(userName.take(1).uppercase(), color = Ink, style = MaterialTheme.typography.titleMedium) }
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Person,
+                contentDescription = null,
+                tint = Accent,
+                modifier = Modifier.size(22.dp),
+            )
+        }
     }
 }
 
@@ -213,10 +225,25 @@ private fun NextWorkoutCard(
                     colors = listOf(Forest, SoftGreen),
                 )
             )
-            .border(1.dp, Border, CardShape)
-            .padding(16.dp),
+            .border(1.dp, Border, CardShape),
     ) {
-        Column {
+        Canvas(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(132.dp),
+        ) {
+            val center = Offset(size.width * 0.9f, size.height * 0.34f)
+            val stroke = Stroke(width = 1.dp.toPx())
+            listOf(23.dp, 43.dp, 63.dp).forEach { ring ->
+                drawCircle(
+                    color = Accent.copy(alpha = 0.16f),
+                    radius = ring.toPx(),
+                    center = center,
+                    style = stroke,
+                )
+            }
+        }
+        Column(Modifier.padding(16.dp)) {
             Text(
                 text = when {
                     loading -> "MEMERIKSA SESI"
@@ -277,10 +304,23 @@ private fun NextWorkoutCard(
 private fun ThisWeekSection(analytics: AnalyticsSummary?, weightUnit: WeightUnit) {
     Column {
         val stackHeader = LocalDensity.current.fontScale >= 1.5f
+        val dateRange = analytics?.let { summary ->
+            val zone = ZoneId.systemDefault()
+            val start = Instant.ofEpochMilli(summary.startEpochMs).atZone(zone).toLocalDate()
+            val end = Instant.ofEpochMilli(summary.endEpochMs).atZone(zone).toLocalDate()
+            val locale = IndonesianLocale
+            val startLabel = if (start.year == end.year && start.month == end.month) {
+                DateTimeFormatter.ofPattern("d", locale).format(start)
+            } else {
+                DateTimeFormatter.ofPattern("d MMM", locale).format(start)
+            }
+            "$startLabel - ${DateTimeFormatter.ofPattern("d MMM", locale).format(end)}"
+                .uppercase(locale)
+        }
         if (stackHeader) {
             Column {
                 Text("Minggu ini", style = MaterialTheme.typography.headlineSmall.copy(color = Ink))
-                Text("Sesi, set, dan volume", style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
+                Text(dateRange ?: "Sesi, set, dan volume", style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
             }
         } else Row(
             modifier = Modifier.fillMaxWidth(),
@@ -291,7 +331,7 @@ private fun ThisWeekSection(analytics: AnalyticsSummary?, weightUnit: WeightUnit
                 text = "Minggu ini",
                 style = MaterialTheme.typography.headlineSmall.copy(color = Ink),
             )
-            Text("Sesi, set, dan volume", style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
+            Text(dateRange ?: "Sesi, set, dan volume", style = MaterialTheme.typography.labelSmall.copy(color = Secondary))
         }
         Spacer(Modifier.height(12.dp))
         val stackStats = LocalDensity.current.fontScale >= 1.5f
@@ -354,9 +394,17 @@ private fun RecentSessionRow(sessionId: String, name: String, meta: String, onCl
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Muted),
-            )
+                    .clip(CircleShape)
+                    .background(Forest),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.FitnessCenter,
+                    contentDescription = null,
+                    tint = Accent.copy(alpha = 0.82f),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(

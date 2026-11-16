@@ -1,6 +1,6 @@
 # Verifikasi ATHRA
 
-Tanggal catatan: 14 November 2026.
+Tanggal catatan: 16 November 2026.
 
 ## Perintah yang dijalankan
 
@@ -11,7 +11,7 @@ XDG_DATA_HOME=/tmp/athra-xdg ANDROID_USER_HOME=/tmp/athra-android GRADLE_USER_HO
 XDG_DATA_HOME=/tmp/athra-xdg ANDROID_USER_HOME=/tmp/athra-android GRADLE_USER_HOME=/tmp/athra-gradle ./gradlew connectedDebugAndroidTest
 ```
 
-Hasil source saat ini (14 November 2026): **14/14 unit test**, **25/25 instrumented test**, lint, dan debug/release assemble berhasil. Instrumented dijalankan pada `emulator-5554`, Medium_Phone AVD, API 37, x86_64; tidak ada tes yang dilewati. Suite mencakup 8 tes Room, 1 constraint, 11 Compose smoke, 1 sesi penuh lintas route, dan 4 auth validation. Review/empty analytics dan draft setelah database dibuka ulang juga diuji. Migration belum diperlukan karena database masih schema versi pertama.
+Hasil source: **14/14 unit test** dan **25/25 instrumented test** lulus pada 14 November 2026. Instrumented dijalankan pada `emulator-5554`, Medium_Phone AVD, API 37, x86_64; tidak ada tes yang dilewati. Suite mencakup 8 tes Room, 1 constraint, 11 Compose smoke, 1 sesi penuh lintas route, dan 4 auth validation. Review/empty analytics dan draft setelah database dibuka ulang juga diuji. Migration belum diperlukan karena database masih schema versi pertama. Pada 16 November, debug assemble dan lint berhasil setelah refinement visual Home; suite instrumented belum diulang setelah perubahan UI itu.
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
@@ -21,7 +21,7 @@ Benchmark fixture 10.000 set mencatat **147 ms**, di bawah target 2 detik; angka
 
 Workout graph memakai route terpisah untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. Tes navigasi penuh kini melewati sesi mulai, tambah gerakan, simpan set, review, finalisasi, History/Detail, Profile/Edit Profile, dan Preferences. Test menegaskan perpindahan navigasi setelah operasi Room yang suspend berjalan pada main thread. State mutation memakai lock tersinkron agar UI tidak mengaktifkan aksi sebelum operasi sebelumnya benar-benar selesai.
 
-Metadata Figma memastikan page `ATHRA · Minimal Redesign` ber-ID `29:2`. Permintaan screenshot dan context ditolak karena batas panggilan Figma MCP Starter; review visual dan pencocokan implementasi terhadap page tersebut masih terbuka.
+Page `ATHRA - Minimal Redesign` ber-ID `29:2` menurut pemeriksaan sebelumnya. Pada 16 November, context MCP menghasilkan “nothing selected”, metadata terkena batas Starter, dan URL publik memberi 403. User kemudian mengekspor frame ke `ATHRA UI UX/`: delapan layar utama serta delapan layar prototype/supporting tersedia sebagai PDF; `README.md` dan `contact-sheet.png` menginventarisasinya. Refinement Home mengadopsi logo sparkle, ikon profil, dekorasi ring, rentang tanggal minggu, dan ikon sesi dari frame lokal. Perbandingan layar lain dan screenshot render terbaru belum dilakukan.
 
 APK dipasang dan diuji dengan Firebase Auth Emulator lokal (`demo-athra`, port 9099). Auth Emulator dapat diakses lewat `adb reverse tcp:9099 tcp:9099` dan debug host `127.0.0.1`. Pendaftaran akun dengan nama, sign in, reset fixture H1/H2, lalu pembuatan H3 lewat UI berhasil. Home menampilkan H3 terbaru; Progress berubah dari H1/H2 (2 sesi, 4 set, 38 repetisi, 1.190 kg) menjadi H1/H2/H3 (3 sesi, 7 set, 68 repetisi, 2.210 kg). Detail H3 menyimpan snapshot “Rekor baru” Bench Press 32 kg dan “Menyamai rekor” Squat 40 kg.
 
@@ -29,7 +29,7 @@ Mode Wi-Fi/data dimatikan setelah sign in; sesi offline berhasil disimpan dan ta
 
 Screenshot runtime: `screenshots/runtime/home-completed-api37.png`, `home-h3-api37.png`, `exercise-library-api37.png`, `workout-summary-api37.png`, `workout-detail-pr-h3-api37.png`, `exercise-reference-h3-api37.png`, `active-reference-h3-api37.png`, `progress-h3-api37.png`, dan `workout-validation-api37.png`.
 
-Peringatan build yang masih muncul: `.android/analytics.settings` tidak dapat ditulis, opsi kompatibilitas KSP/AGP bersifat experimental, Kotlin pada JDK 25 fallback ke target JVM 24, beberapa konstruktor `Locale(String, String)` deprecated, dan ikon `ArrowBack` lama di dua file layar yang sudah tidak menjadi entry point utama.
+Peringatan build yang masih muncul: `.android/analytics.settings` tidak dapat ditulis, opsi kompatibilitas KSP/AGP bersifat experimental, Kotlin pada JDK 25 fallback ke target JVM 24, dan ikon `ArrowBack` lama di dua file layar yang sudah tidak menjadi entry point utama. Konstruktor `Locale(String, String)` di Home diganti dengan `Locale.forLanguageTag` pada refinement 16 November.
 
 ## Status acceptance criteria
 
