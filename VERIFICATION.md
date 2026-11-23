@@ -1,6 +1,6 @@
 # Verifikasi ATHRA
 
-Tanggal catatan: 16 November 2026.
+Tanggal catatan: 23 November 2026.
 
 ## Perintah yang dijalankan
 
@@ -11,7 +11,7 @@ XDG_DATA_HOME=/tmp/athra-xdg ANDROID_USER_HOME=/tmp/athra-android GRADLE_USER_HO
 XDG_DATA_HOME=/tmp/athra-xdg ANDROID_USER_HOME=/tmp/athra-android GRADLE_USER_HOME=/tmp/athra-gradle ./gradlew connectedDebugAndroidTest
 ```
 
-Hasil source: **14/14 unit test** dan **25/25 instrumented test** lulus pada 14 November 2026. Instrumented dijalankan pada `emulator-5554`, Medium_Phone AVD, API 37, x86_64; tidak ada tes yang dilewati. Suite mencakup 8 tes Room, 1 constraint, 11 Compose smoke, 1 sesi penuh lintas route, dan 4 auth validation. Review/empty analytics dan draft setelah database dibuka ulang juga diuji. Migration belum diperlukan karena database masih schema versi pertama. Pada 16 November, debug assemble dan lint berhasil setelah refinement visual Home; suite instrumented belum diulang setelah perubahan UI itu.
+Hasil source pada 23 November 2026: `testDebugUnitTest`, `lintDebug`, `assembleDebug`, dan `assembleRelease` lulus. `connectedDebugAndroidTest` lulus **26/26**, 0 gagal, 0 dilewati, pada `emulator-5554`, Medium_Phone AVD, API 37. Suite mencakup 8 tes Room (termasuk rollback saat insert snapshot gagal), 1 constraint, 11 Compose smoke, 2 tes navigasi workout, dan 4 auth validation. Migration belum diperlukan karena database masih schema versi pertama.
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
@@ -21,15 +21,15 @@ Benchmark fixture 10.000 set mencatat **147 ms**, di bawah target 2 detik; angka
 
 Workout graph memakai route terpisah untuk Start, Quick Start, Library, Filters, Exercise Details, Active Workout, dan Summary. Tes navigasi penuh kini melewati sesi mulai, tambah gerakan, simpan set, review, finalisasi, History/Detail, Profile/Edit Profile, dan Preferences. Test menegaskan perpindahan navigasi setelah operasi Room yang suspend berjalan pada main thread. State mutation memakai lock tersinkron agar UI tidak mengaktifkan aksi sebelum operasi sebelumnya benar-benar selesai.
 
-Page `ATHRA - Minimal Redesign` ber-ID `29:2` menurut pemeriksaan sebelumnya. Pada 16 November, context MCP menghasilkan “nothing selected”, metadata terkena batas Starter, dan URL publik memberi 403. User kemudian mengekspor frame ke `ATHRA UI UX/`: delapan layar utama serta delapan layar prototype/supporting tersedia sebagai PDF; `README.md` dan `contact-sheet.png` menginventarisasinya. Refinement Home mengadopsi logo sparkle, ikon profil, dekorasi ring, rentang tanggal minggu, dan ikon sesi dari frame lokal. Perbandingan layar lain dan screenshot render terbaru belum dilakukan.
+Page `ATHRA - Minimal Redesign` ber-ID `29:2` menurut pemeriksaan sebelumnya. Pada 16 November, context MCP menghasilkan “nothing selected”, metadata terkena batas Starter, dan URL publik memberi 403. User mengekspor frame ke `ATHRA UI UX/`: delapan layar utama serta delapan layar prototype/supporting tersedia sebagai PDF. Home, Active Workout, dan Summary dibandingkan dengan frame lokal; Active Workout kini memakai timer/set card, exercise cards, bagian berikutnya, serta Finish CTA pinned. Summary memakai completion hero, kartu sesi, metrik aktual, dan highlight pergerakan. Library kini menampilkan kartu gerakan dan quick-add; tap `+` Bench Press secara manual menambahkan gerakan dan membuka Workout aktif. Screenshot runtime disimpan pada `screenshots/runtime/`. Login, Pre-workout, Progress, Profile, dan layar supporting masih memerlukan review visual terperinci; keseluruhan belum diklaim pixel-identik.
 
-APK dipasang dan diuji dengan Firebase Auth Emulator lokal (`demo-athra`, port 9099). Auth Emulator dapat diakses lewat `adb reverse tcp:9099 tcp:9099` dan debug host `127.0.0.1`. Pendaftaran akun dengan nama, sign in, reset fixture H1/H2, lalu pembuatan H3 lewat UI berhasil. Home menampilkan H3 terbaru; Progress berubah dari H1/H2 (2 sesi, 4 set, 38 repetisi, 1.190 kg) menjadi H1/H2/H3 (3 sesi, 7 set, 68 repetisi, 2.210 kg). Detail H3 menyimpan snapshot “Rekor baru” Bench Press 32 kg dan “Menyamai rekor” Squat 40 kg.
+APK dipasang dan diuji dengan Firebase Auth Emulator lokal (`demo-athra`, port 9099). Auth Emulator dapat diakses lewat `adb reverse tcp:9099 tcp:9099` dan debug host `127.0.0.1`. Pada smoke demo 23 Nov, pendaftaran akun, reset H1/H2, pembuatan dan penyimpanan H3 lewat UI berhasil. H3 berisi Bench Press 10×32 kg dan 10×30 kg serta Squat 10×40 kg; Summary melaporkan 3 set dan 1.020 kg. Home menampilkan H3 terbaru; Progress dan History berisi H1/H2/H3 dengan total 3 sesi, 7 set, 68 repetisi, 2.210 kg. Detail H3 menyimpan snapshot “Rekor baru” Bench Press 32 kg dan “Menyamai rekor” Squat 40 kg. Signup dan penyimpanan set berhasil saat keyboard AVD terbuka; variasi posisi keyboard dan ukuran layar lain masih perlu diperiksa.
 
-Mode Wi-Fi/data dimatikan setelah sign in; sesi offline berhasil disimpan dan tampil di Home. Force-stop saat draft aktif berisi satu set, lalu relaunch, memulihkan akun, set Bench Press 10×20 kg, dan timer. Pada font scale 200%, Home menumpuk judul/subjudul, workout dapat di-scroll, tombol Simpan set dapat dipakai, dan bottom navigation menampilkan ikon yang tetap dapat membuka Latihan, Progress, serta Profil. Soft keyboard Android tidak terbuka melalui otomasi ADB, jadi inset/CTA saat keyboard benar-benar terbuka belum dibuktikan. Rotasi dan pergantian akun belum diuji manual. Font scale emulator dikembalikan ke 100% setelah pengecekan.
+Auth Emulator berjalan lokal di `demo-athra:9099`, diakses lewat `adb reverse tcp:9099 tcp:9099`; build debug memakai `-Pathra.authEmulator=true -Pathra.authEmulatorHost=127.0.0.1`. Home, Library, Active Workout, Summary, dan detail History dicoba manual; quick-add Bench Press dari Library membuka Active Workout dengan gerakan itu terpilih. Pada font scale 200%, Active Workout dapat di-scroll, Summary metrics tersusun vertikal, dan CTA pinned tetap terlihat. Rotasi Library mempertahankan query; rotasi Active mempertahankan 1 set/12 repetisi. Background/foreground mempertahankan set Bench Press 30 kg × 12, volume 360 kg, dan timer yang terus maju. Force-stop saat ACTIVE memulihkan draft/set/timer; force-stop saat REVIEW mengembalikan Home dengan draft lalu melanjutkan ke Summary yang sama (durasi 21 menit, set 30 kg × 12). Pergantian manual akun `demo@athra.test` → `switch@athra.test` memperlihatkan Home kosong pada akun kedua; kembali ke akun pertama menampilkan fixture H1/H2 lagi. Pada smoke 23 Nov, tombol Daftar dan Simpan set terlihat serta dapat dipakai saat keyboard AVD terbuka. Posisi keyboard lain, perangkat kecil, audit target sentuh 48 dp, screen reader, rotasi REVIEW, pergantian UID saat operasi berjalan, dan retry manual masih belum diverifikasi.
 
-Screenshot runtime: `screenshots/runtime/home-completed-api37.png`, `home-h3-api37.png`, `exercise-library-api37.png`, `workout-summary-api37.png`, `workout-detail-pr-h3-api37.png`, `exercise-reference-h3-api37.png`, `active-reference-h3-api37.png`, `progress-h3-api37.png`, dan `workout-validation-api37.png`.
+Screenshot runtime: `screenshots/runtime/home-completed-api37.png`, `home-h3-api37.png`, `home-redesign-api37.png`, `exercise-library-api37.png`, `exercise-library-quick-add-api37.png`, `exercise-library-quick-add-result-api37.png`, `active-workout-redesign-api37.png`, `active-workout-resume-api37.png`, `active-workout-force-stop-recovery-api37.png`, `active-workout-ime-floating-api37.png`, `active-workout-ime-bottom-api37.png`, `workout-summary-redesign-api37.png`, `active-workout-font200-api37.png`, `workout-summary-font200-api37.png`, `workout-summary-api37.png`, `workout-review-force-stop-recovery-api37.png`, `workout-detail-pr-h3-api37.png`, `exercise-reference-h3-api37.png`, `active-reference-h3-api37.png`, `progress-h3-api37.png`, dan `workout-validation-api37.png`.
 
-Peringatan build yang masih muncul: `.android/analytics.settings` tidak dapat ditulis, opsi kompatibilitas KSP/AGP bersifat experimental, Kotlin pada JDK 25 fallback ke target JVM 24, dan ikon `ArrowBack` lama di dua file layar yang sudah tidak menjadi entry point utama. Konstruktor `Locale(String, String)` di Home diganti dengan `Locale.forLanguageTag` pada refinement 16 November.
+Peringatan build pada sesi ini: Gradle tidak dapat menulis `/home/fast9/.android/analytics.settings` karena file system read-only; lint/build tetap lulus. Konstruktor `Locale(String, String)` di Home diganti dengan `Locale.forLanguageTag` pada refinement 16 November.
 
 ## Status acceptance criteria
 
@@ -37,11 +37,11 @@ Status “implementasi ada” berarti alur/kode ditemukan dalam aplikasi; itu bu
 
 | AC | Status saat ini |
 | --- | --- |
-| AC01–05 | Sign up dengan nama, sign in, Home, dan pemulihan sesi Auth setelah force-stop berhasil dicoba manual. Retry setup, sign out, dan isolasi dua akun belum diuji manual end-to-end. |
+| AC01–05 | Sign up/sign in/Auth restore telah diuji sebelumnya; sign out dan pergantian akun demo sekarang diuji manual. Akun kedua mulai dengan Home kosong, dan akun pertama kembali menampilkan fixture H1/H2. Retry setup belum diuji manual. |
 | AC06 | Kalkulasi total dari set tersimpan diuji lewat unit/instrumented test dan demo H1/H2/H3: 7 set, 68 repetisi, 2.210 kg. |
 | AC07–09 | Edit/hapus set dengan ID stabil dan renumber tersedia. Belum ada UI test. |
 | AC10 | Beban 0 diterima dan dihitung sebagai set/repetisi; tercakup dalam unit test. |
-| AC11–15 | Review menolak tanpa set, membekukan waktu selesai, menyediakan koreksi, dan menghitung PR; pada H3 UI menunjukkan PR baru Bench Press dan rekor Squat yang sama. Rotasi/process death saat REVIEW belum diuji. |
+| AC11–15 | Review menolak tanpa set, membekukan waktu selesai, menyediakan koreksi, dan menghitung PR; pada H3 UI menunjukkan PR baru Bench Press dan rekor Squat yang sama. Force-stop saat REVIEW lalu lanjut dari Home membuka Summary dengan set dan durasi yang sama; rotasi saat REVIEW belum diuji. |
 | AC16–17 | Finalisasi Room transaksional dan idempoten diimplementasikan; tes repository finalisasi dan idempotensi lulus pada emulator. |
 | AC18–20 | PR baseline/baru/sama/di bawah dan identitas exercise stabil tersedia; status PR tercakup unit test. |
 | AC21–23 | Referensi sesi terakhir, perbandingan nomor set, delta, dan kondisi tanpa pembanding tersedia; integration test memilih sesi terbaru lulus. Tampilan referensi H3 tersimpan di screenshot. |
@@ -57,7 +57,7 @@ Status “implementasi ada” berarti alur/kode ditemukan dalam aplikasi; itu bu
 | AC35–38 | Filter dan detail exercise dicoba manual; nama saat sign-up sekarang tersimpan sebagai nama profil. Pencegahan duplikat tersedia; Edit Profile dan isolasi preferensi per UID belum diuji manual. |
 | AC39 | Sesi diselesaikan saat Wi-Fi dan data dimatikan setelah login; Home menampilkan sesi tersimpan lokal. |
 | AC40 | Tes repository bahwa discard menghapus draft beserta child rows lulus pada emulator. |
-| AC41 | Font scale 200% diuji manual: Home bertumpuk, layar workout dapat di-scroll, set tersimpan, CTA dapat dijangkau, dan bottom navigation tetap dapat dipakai dengan ikon ber-content description. Soft keyboard, inset IME, perangkat kecil, dan audit target 48 dp belum sepenuhnya diverifikasi. |
+| AC41 | Font scale 200% diuji manual pada Active Workout dan Summary: konten dapat di-scroll dan pinned CTA tetap terlihat; metrik Summary menjadi vertikal. Pada smoke 23 Nov, Daftar dan Simpan set dapat dipakai saat keyboard AVD terbuka. Variasi posisi keyboard, perangkat kecil, font scale layar lain, screen reader, dan audit target 48 dp masih terbuka. |
 | AC42 | Benchmark fixture 10.000 set lulus dalam 147 ms pada Medium_Phone AVD, API 37, x86_64 (target <2 detik). Ini bukan pengukuran UI frame time. |
 
 ## Teori perkuliahan dan lokasi kode
@@ -68,4 +68,4 @@ Status “implementasi ada” berarti alur/kode ditemukan dalam aplikasi; itu bu
 4. **State dan ViewModel** — `WorkoutViewModel` mengekspos `StateFlow`; UI Compose mengamati state dan mengirim aksi kembali ke ViewModel.
 5. **Database** — `data/local/AppDatabase.kt`, `Entities.kt`, `Daos.kt`, dan `data/repository/WorkoutRepository.kt` menyimpan data workout di Room.
 
-Kelima hal di atas menunjukkan struktur implementasi. Pemulihan Auth dan draft setelah force-stop serta penggunaan dasar pada font 200% sudah diverifikasi runtime. Rotasi, pemulihan state saat layar REVIEW, dan responsivitas pada perangkat kecil masih belum diverifikasi.
+Kelima hal di atas menunjukkan struktur implementasi. Pemulihan Auth/draft setelah force-stop (ACTIVE dan REVIEW), rotasi Library/Active, isolasi dua akun, serta penggunaan font 200% pada Active/Summary sudah diverifikasi runtime. Rotasi saat REVIEW, retry manual, pergantian UID saat operasi berlangsung, variasi keyboard, audit aksesibilitas, dan perangkat kecil belum diverifikasi.

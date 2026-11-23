@@ -215,7 +215,7 @@ class FlowSmokeTest {
         compose.onNodeWithText("Beban (kg)").performTextInput("32")
         compose.onNodeWithText("Simpan set").performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Simpan set").assertIsNotEnabled()
+        compose.onNodeWithText("Menyimpan…").assertIsNotEnabled()
         compose.runOnIdle { assertEquals(1, saveCalls.get()) }
 
         pendingSave.complete(true)

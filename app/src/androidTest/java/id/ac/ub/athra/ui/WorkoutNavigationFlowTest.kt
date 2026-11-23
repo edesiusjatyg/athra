@@ -3,12 +3,16 @@ package id.ac.ub.athra.ui
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
@@ -18,6 +22,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavHostController
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -25,6 +30,7 @@ import id.ac.ub.athra.data.local.AppDatabase
 import id.ac.ub.athra.data.repository.WorkoutRepository
 import id.ac.ub.athra.domain.model.WeightUnit
 import id.ac.ub.athra.ui.navigation.AthraNavGraph
+import id.ac.ub.athra.ui.navigation.Routes
 import id.ac.ub.athra.ui.theme.AthraTheme
 import id.ac.ub.athra.ui.workout.WorkoutViewModel
 import id.ac.ub.athra.ui.workout.WorkoutViewModelFactory
@@ -74,22 +80,26 @@ class WorkoutNavigationFlowTest {
     @Test
     fun workoutCanStartAddSetReviewAndSaveAcrossGraphRoutes() {
         var savedUnit: WeightUnit? = null
+        var testNavController: NavHostController? = null
+        val graphFactory = WorkoutViewModelFactory(
+            "nav-test-user",
+            repository,
+            savedStateEnabled = true,
+        )
         compose.setContent {
             CompositionLocalProvider(LocalViewModelStoreOwner provides storeOwner) {
                 AthraTheme {
                     val state by workoutViewModel.state.collectAsStateWithLifecycle()
+                    val navController = rememberNavController()
+                    SideEffect { testNavController = navController }
                     AthraNavGraph(
-                        navController = rememberNavController(),
+                        navController = navController,
                         userId = "nav-test-user",
                         database = database,
                         userName = state.profileName.ifBlank { "Atlet Uji" },
                         workoutState = state,
                         workoutViewModel = workoutViewModel,
-                        workoutViewModelFactory = WorkoutViewModelFactory(
-                            "nav-test-user",
-                            repository,
-                            savedStateEnabled = true,
-                        ),
+                        workoutViewModelFactory = graphFactory,
                         onResumeWorkout = {},
                         onSignOut = {},
                         userEmail = "atlet@example.test",
@@ -108,15 +118,34 @@ class WorkoutNavigationFlowTest {
 
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Pilih gerakan").fetchSemanticsNodes().isNotEmpty() }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Bench Press").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Bench Press").performClick()
-        compose.onNodeWithText("Tambah ke sesi").assertIsDisplayed().performClick()
+        compose.onNodeWithContentDescription("Tambahkan Bench Press").assertIsDisplayed().performClick()
 
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Repetisi").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Detail").performClick()
+        compose.onNodeWithText("Detail gerakan").assertIsDisplayed()
+        compose.onNodeWithText("Kembali").performClick()
+        compose.onNodeWithText("Repetisi").assertIsDisplayed()
         compose.onNodeWithText("Repetisi").performTextInput("10")
         compose.onNodeWithText("Beban (kg)").performTextInput("32")
+        compose.onNodeWithText("Simpan set").assertIsEnabled()
         compose.onNodeWithText("Simpan set").performClick()
-        compose.waitUntil(5_000) {
-            runBlocking { repository.getDraft("nav-test-user")?.exercises?.any { it.sets.isNotEmpty() } == true }
+        try {
+            compose.waitUntil(5_000) {
+                runBlocking { repository.getDraft("nav-test-user")?.exercises?.any { it.sets.isNotEmpty() } == true }
+            }
+        } catch (error: Throwable) {
+            val draft = runBlocking { repository.getDraft("nav-test-user") }
+            val graphEntry = testNavController!!.getBackStackEntry(Routes.WorkoutGraph.route)
+            val graphViewModel = ViewModelProvider(graphEntry, graphFactory)
+                .get("workout_graph_viewmodel", WorkoutViewModel::class.java)
+            val graphState = graphViewModel.state.value
+            Log.e(
+                "WorkoutNavigationFlowTest",
+                "Draft after set save: ${draft?.exercises?.map { it.exercise.id to it.sets.size }}; graph form=${graphState.repsInput}/${graphState.weightInput}, selected=${graphState.selectedExerciseId}, busy=${graphState.busy}, error=${graphState.error}",
+                error,
+            )
+            compose.onRoot().printToLog("WorkoutNavigationFlowTest")
+            throw error
         }
         compose.onNodeWithText("Beban (kg)").performImeAction()
         compose.waitForIdle()
@@ -158,5 +187,66 @@ class WorkoutNavigationFlowTest {
         compose.onNodeWithText("Pound (lb)").performClick()
         compose.onNodeWithText("Simpan").performClick()
         compose.waitUntil(5_000) { savedUnit == WeightUnit.LB }
+    }
+
+    @Test
+    fun recoveredReviewCanReturnToActiveWithoutPoppingWorkoutGraph() {
+        runBlocking {
+            val draft = repository.startOrResume("nav-test-user", "Workout pulih", now = 1_000L)
+            repository.addExercise("nav-test-user", draft.session.id, "bench_press")
+            repository.saveSet(
+                "nav-test-user",
+                draft.session.id,
+                "bench_press",
+                setId = null,
+                repsText = "12",
+                weightText = "30",
+                unit = WeightUnit.KG,
+            )
+            repository.enterReview("nav-test-user", draft.session.id, endedAt = 5_000L)
+            workoutViewModel.refreshDraft().join()
+        }
+
+        compose.setContent {
+            CompositionLocalProvider(LocalViewModelStoreOwner provides storeOwner) {
+                AthraTheme {
+                    val state by workoutViewModel.state.collectAsStateWithLifecycle()
+                    AthraNavGraph(
+                        navController = rememberNavController(),
+                        userId = "nav-test-user",
+                        database = database,
+                        userName = state.profileName.ifBlank { "Atlet Uji" },
+                        workoutState = state,
+                        workoutViewModel = workoutViewModel,
+                        workoutViewModelFactory = WorkoutViewModelFactory(
+                            "nav-test-user",
+                            repository,
+                            savedStateEnabled = true,
+                        ),
+                        onResumeWorkout = {},
+                        onSignOut = {},
+                        userEmail = "atlet@example.test",
+                        weightUnit = WeightUnit.KG,
+                        onSaveUnit = {},
+                    )
+                }
+            }
+        }
+
+        compose.waitUntil(5_000) {
+            workoutViewModel.state.value.draft?.session?.status?.name == "REVIEW"
+        }
+        compose.onNodeWithText("Lanjutkan sesi").performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("Ringkasan workout").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        compose.onNodeWithText("Kembali memperbaiki").performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("Workout aktif").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("30 kg × 12", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Selesai dan tinjau").assertIsDisplayed()
+        assertEquals("ACTIVE", runBlocking { repository.getDraft("nav-test-user")?.session?.status?.name })
     }
 }

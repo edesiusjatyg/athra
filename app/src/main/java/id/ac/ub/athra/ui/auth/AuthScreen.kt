@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,9 +51,24 @@ fun AuthScreen(
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
 
-    Scaffold(containerColor = Background) { insets ->
+    Scaffold(
+        containerColor = Background,
+        bottomBar = {
+            Button(
+                onClick = {
+                    if (registering) onSignUp(name, email, password, confirmation) else onSignIn(email, password)
+                },
+                enabled = !state.busy,
+                modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 24.dp, vertical = 12.dp).height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Background),
+            ) {
+                Text(if (state.busy) "Memproses…" else if (registering) "Daftar" else "Masuk", fontWeight = FontWeight.SemiBold)
+            }
+        },
+    ) { insets ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState())
+            modifier = Modifier.fillMaxSize().padding(insets).imePadding().verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             verticalArrangement = Arrangement.Center,
         ) {
@@ -83,17 +99,6 @@ fun AuthScreen(
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
             }
             Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = {
-                    if (registering) onSignUp(name, email, password, confirmation) else onSignIn(email, password)
-                },
-                enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Background),
-            ) {
-                Text(if (state.busy) "Memproses…" else if (registering) "Daftar" else "Masuk", fontWeight = FontWeight.SemiBold)
-            }
             TextButton(onClick = {
                 registering = !registering
                 password = ""

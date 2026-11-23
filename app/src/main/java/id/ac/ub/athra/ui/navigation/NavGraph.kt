@@ -207,6 +207,22 @@ fun AthraNavGraph(
                     onSearchChange = graphViewModel::updateLibrarySearch,
                     onOpenFilters = { navController.navigate(Routes.ExerciseFilters.route) },
                     onOpenDetails = { exerciseId -> navController.navigate(Routes.ExerciseDetails.create(exerciseId)) },
+                    busy = graphState.busy,
+                    onAddExercise = { exerciseId ->
+                        scope.launch {
+                            val sessionId = graphViewModel.state.value.draft?.session?.id ?: return@launch
+                            if (graphViewModel.addExerciseResult(sessionId, exerciseId)) {
+                                graphViewModel.selectExercise(exerciseId)
+                                withContext(Dispatchers.Main.immediate) {
+                                    val returnedToActive = navController.popBackStack(Routes.LiveWorkout.route, inclusive = false)
+                                    if (!returnedToActive) {
+                                        navController.popBackStack(Routes.ExerciseLibrary.route, inclusive = true)
+                                        navController.navigate(Routes.LiveWorkout.route) { launchSingleTop = true }
+                                    }
+                                }
+                            }
+                        }
+                    },
                     onBack = { navController.popBackStack() },
                     onRetry = { graphViewModel.retryCatalog() },
                 )
@@ -313,7 +329,20 @@ fun AthraNavGraph(
                         TextButton(onClick = { graphViewModel.refreshDraft() }) { Text("Coba lagi") }
                     }
                 } else if (draft.session.status != SessionStatus.REVIEW) {
-                    LaunchedEffect(draft.session.status) { navController.popBackStack() }
+                    LaunchedEffect(draft.session.status) {
+                        navController.navigate(Routes.LiveWorkout.route) {
+                            popUpTo(Routes.Summary.route) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    }
+                    Column(
+                        Modifier.fillMaxSize(),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                    ) {
+                        CircularProgressIndicator()
+                        Text("Membuka kembali workout…")
+                    }
                 } else {
                     WorkoutSummaryScreen(
                         draft = draft,
@@ -321,9 +350,7 @@ fun AthraNavGraph(
                         weightUnit = weightUnit,
                         onResume = {
                             scope.launch {
-                                if (graphViewModel.resumeResult(draft.session.id)) {
-                                    withContext(Dispatchers.Main.immediate) { navController.popBackStack() }
-                                }
+                                graphViewModel.resumeResult(draft.session.id)
                             }
                         },
                         onSave = {

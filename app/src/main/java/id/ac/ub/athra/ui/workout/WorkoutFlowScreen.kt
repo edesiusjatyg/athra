@@ -25,7 +25,12 @@ import id.ac.ub.athra.domain.model.WorkoutDraft
 import id.ac.ub.athra.domain.time.SystemWorkoutClock
 import id.ac.ub.athra.domain.time.WorkoutClock
 import id.ac.ub.athra.domain.time.elapsedSeconds
+import id.ac.ub.athra.ui.components.AthraCard
+import id.ac.ub.athra.ui.components.AthraChip
 import id.ac.ub.athra.ui.theme.Background
+import id.ac.ub.athra.ui.theme.Forest
+import id.ac.ub.athra.ui.theme.Ink
+import id.ac.ub.athra.ui.theme.Secondary
 import kotlinx.coroutines.launch
 
 @Composable
@@ -54,7 +59,9 @@ fun WorkoutFlowScreen(
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
-    val largeFont = LocalDensity.current.fontScale >= 1.5f
+    val density = LocalDensity.current
+    val largeFont = density.fontScale >= 1.5f
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
     var exerciseId by rememberSaveable(draft.session.id) {
         mutableStateOf(state.selectedExerciseId.ifBlank { draft.exercises.firstOrNull()?.exercise?.id.orEmpty() })
     }
@@ -91,17 +98,102 @@ fun WorkoutFlowScreen(
     val elapsed = elapsedSeconds(draft.session.startedAt, draft.session.endedAt ?: now)
     val timer = "%02d:%02d:%02d".format(elapsed / 3600, elapsed % 3600 / 60, elapsed % 60)
     val selected = draft.exercises.firstOrNull { it.exercise.id == exerciseId }
+    val selectedExerciseId = selected?.exercise?.id
+    val selectedIndex = draft.exercises.indexOfFirst { it.exercise.id == exerciseId }
+    val nextExercise = if (selectedIndex >= 0) draft.exercises.getOrNull(selectedIndex + 1) else null
+
+    fun saveCurrentSet() {
+        val exerciseIdToSave = selectedExerciseId ?: return
+        if (savingSet || state.busy) return
+        savingSet = true
+        scope.launch {
+            try {
+                val unchangedWeight = editingSetId != null && weight == editingOriginalDisplay
+                val saved = onSaveSet(
+                    draft.session.id,
+                    exerciseIdToSave,
+                    editingSetId,
+                    reps,
+                    if (unchangedWeight) editingOriginalKg.orEmpty() else weight,
+                    if (unchangedWeight) WeightUnit.KG else weightUnit,
+                )
+                if (saved) {
+                    reps = ""; weight = ""; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null
+                    onClearSetForm()
+                }
+            } finally {
+                savingSet = false
+            }
+        }
+    }
 
     Scaffold(containerColor = Background, topBar = {
         TopAppBar(title = { Text(if (draft.session.status == SessionStatus.REVIEW) "Ringkasan" else "Workout aktif") },
             navigationIcon = { TextButton(onClick = { confirmLeaveWorkout = true }) { Text("Kembali") } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Background))
+    }, bottomBar = {
+        if (draft.session.status == SessionStatus.ACTIVE) {
+            Column(
+                modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (imeVisible && selectedExerciseId != null) {
+                    Button(
+                        onClick = ::saveCurrentSet,
+                        enabled = !state.busy && !savingSet,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(if (savingSet) "Menyimpan…" else "Simpan set") }
+                } else {
+                    Button(
+                        onClick = {
+                            if (reps.isNotBlank() || weight.isNotBlank()) confirmUnsavedFinish = true
+                            else scope.launch { onFinish(draft.session.id) }
+                        },
+                        enabled = !state.busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Selesai dan tinjau") }
+                }
+            }
+        }
     }) { inset ->
         Column(Modifier.fillMaxSize().padding(inset).imePadding().verticalScroll(rememberScrollState()).padding(20.dp)) {
-            Text(draft.session.name, style = MaterialTheme.typography.headlineMedium)
+            Text(draft.session.name, style = MaterialTheme.typography.headlineMedium, color = Ink)
+            val muscleGroups = draft.exercises.map { it.exercise.primaryMuscleGroup }.distinct().joinToString(" · ")
+            if (muscleGroups.isNotBlank()) {
+                Text(muscleGroups.uppercase(), style = MaterialTheme.typography.labelSmall, color = Secondary)
+            }
+            Spacer(Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Forest),
+            ) {
+                if (largeFont) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("DURASI BERJALAN", style = MaterialTheme.typography.labelSmall, color = Secondary)
+                        Text(timer, style = MaterialTheme.typography.headlineMedium, color = Ink)
+                        Text("${totals.setCount} set tersimpan", style = MaterialTheme.typography.titleMedium, color = Ink)
+                    }
+                } else Row(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text("DURASI BERJALAN", style = MaterialTheme.typography.labelSmall, color = Secondary)
+                        Text(timer, style = MaterialTheme.typography.headlineMedium, color = Ink)
+                    }
+                    Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                        Text("SET TERSIMPAN", style = MaterialTheme.typography.labelSmall, color = Secondary)
+                        Text(totals.setCount.toString(), style = MaterialTheme.typography.headlineMedium, color = id.ac.ub.athra.ui.theme.Accent)
+                    }
+                }
+            }
             Spacer(Modifier.height(8.dp))
-            Text("Durasi  $timer", style = MaterialTheme.typography.titleLarge)
-            Text("${totals.setCount} set · ${totals.repCount} repetisi · ${displayNumber(displayWeight(totals.volumeKg, weightUnit))} ${weightUnit.name.lowercase()}", color = MaterialTheme.colorScheme.secondary)
+            Text(
+                "${totals.repCount} repetisi · ${displayNumber(displayWeight(totals.volumeKg, weightUnit))} ${weightUnit.name.lowercase()} volume",
+                color = Secondary,
+            )
             Spacer(Modifier.height(20.dp))
 
             if (draft.session.status == SessionStatus.REVIEW) {
@@ -127,8 +219,10 @@ fun WorkoutFlowScreen(
                 TextButton(onClick = { scope.launch { onResume(draft.session.id) } }, enabled = !state.busy) { Text("Kembali memperbaiki") }
                 TextButton(onClick = { confirmDiscard = true }, enabled = !state.busy) { Text("Buang sesi") }
             } else {
-                Text("Gerakan", style = MaterialTheme.typography.titleMedium)
+                Text("Gerakan aktif", style = MaterialTheme.typography.headlineSmall, color = Ink)
+                Spacer(Modifier.height(8.dp))
                 draft.exercises.forEach { item ->
+                    AthraCard(Modifier.padding(bottom = 12.dp)) {
                     val selectExercise = {
                         exerciseId = item.exercise.id
                         onSelectExercise(item.exercise.id)
@@ -138,6 +232,18 @@ fun WorkoutFlowScreen(
                         reps = ""
                         weight = ""
                         onClearSetForm()
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            item.exercise.primaryMuscleGroup.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Secondary,
+                        )
+                        AthraChip(label = item.exercise.equipment.uppercase())
                     }
                     if (largeFont) {
                         Column(Modifier.fillMaxWidth()) {
@@ -191,10 +297,22 @@ fun WorkoutFlowScreen(
                             }
                         }
                     }
+                    }
+                }
+                if (nextExercise != null) {
+                    Text("Berikutnya", style = MaterialTheme.typography.titleMedium, color = Ink)
+                    AthraCard(Modifier.padding(top = 8.dp, bottom = 12.dp)) {
+                        Text(nextExercise.exercise.name, style = MaterialTheme.typography.titleMedium, color = Ink)
+                        Text(
+                            "${nextExercise.exercise.primaryMuscleGroup} · ${nextExercise.exercise.equipment}",
+                            color = Secondary,
+                        )
+                    }
                 }
                 TextButton(onClick = onOpenLibrary, enabled = !state.busy) { Text("+ Tambah gerakan") }
                 if (selected != null) {
-                    Text("Catat set · ${selected.exercise.name}", style = MaterialTheme.typography.titleMedium)
+                    AthraCard {
+                    Text("Catat set · ${selected.exercise.name}", style = MaterialTheme.typography.titleMedium, color = Ink)
                     OutlinedTextField(
                         value = reps,
                         onValueChange = { reps = it; onUpdateSetInputs(reps, weight) },
@@ -212,41 +330,24 @@ fun WorkoutFlowScreen(
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Button(
-                        onClick = {
-                            if (savingSet || state.busy) return@Button
-                            savingSet = true
-                            scope.launch {
-                                try {
-                                    val unchangedWeight = editingSetId != null && weight == editingOriginalDisplay
-                                    val saved = onSaveSet(
-                                        draft.session.id,
-                                        selected.exercise.id,
-                                        editingSetId,
-                                        reps,
-                                        if (unchangedWeight) editingOriginalKg.orEmpty() else weight,
-                                        if (unchangedWeight) WeightUnit.KG else weightUnit,
-                                    )
-                                    if (saved) {
-                                        reps = ""; weight = ""; editingSetId = null; editingOriginalDisplay = null; editingOriginalKg = null
-                                        onClearSetForm()
-                                    }
-                                } finally {
-                                    savingSet = false
-                                }
-                            }
-                        },
-                        enabled = !state.busy && !savingSet,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(if (editingSetId == null) "Simpan set" else "Simpan perubahan set") }
+                    if (!imeVisible) {
+                        Button(
+                            onClick = ::saveCurrentSet,
+                            enabled = !state.busy && !savingSet,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(if (editingSetId == null) "Simpan set" else "Simpan perubahan set") }
+                    }
+                    }
                     val reference = state.exerciseReferences[selected.exercise.id]
                     Spacer(Modifier.height(12.dp))
-                    Text("Riwayat terakhir", style = MaterialTheme.typography.titleSmall)
+                    AthraCard {
+                    Text("Riwayat latihan terakhir", style = MaterialTheme.typography.titleSmall, color = Ink)
                     if (reference == null) {
-                        Text("Belum ada riwayat untuk gerakan ini.", color = MaterialTheme.colorScheme.secondary)
+                        Text("Belum ada riwayat untuk gerakan ini.", color = Secondary)
                     } else {
+                        Text("${reference.session.name} · ${reference.sets.size} set", color = Secondary)
                         reference.sets.forEach { previous ->
-                            Text("Set ${previous.number} · ${previous.reps} repetisi · ${displayNumber(displayWeight(previous.weightKg, weightUnit))} ${weightUnit.name.lowercase()}")
+                            Text("Set ${previous.number} · ${previous.reps} repetisi · ${displayNumber(displayWeight(previous.weightKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Ink)
                         }
                         selected.sets.forEach { current ->
                             val previous = reference.sets.firstOrNull { it.number == current.number }
@@ -271,13 +372,10 @@ fun WorkoutFlowScreen(
                             Text("Volume gerakan: ${displayNumber(displayWeight(currentVolume, weightUnit))} ${weightUnit.name.lowercase()} · Δ $volumeSign${displayNumber(displayWeight(volumeDelta, weightUnit))}")
                         }
                     }
+                    }
                 }
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(12.dp))
-                Button(onClick = {
-                    if (reps.isNotBlank() || weight.isNotBlank()) confirmUnsavedFinish = true
-                    else scope.launch { onFinish(draft.session.id) }
-                }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Selesai dan tinjau") }
                 TextButton(onClick = { confirmDiscard = true }, enabled = !state.busy) { Text("Buang sesi") }
             }
         }
