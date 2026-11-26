@@ -91,3 +91,7 @@ Lihat [TODO.md](TODO.md) untuk item implementasi, [PRD.md](PRD.md) untuk accepta
 Seluruh layar utama, termasuk Active Workout, dan layar pendukung sudah dibangun ulang mengikuti PDF Figma lokal. Perubahan mencakup font Inter dengan bobot sebenarnya, komponen/warna bersama, navigasi outline, susunan kartu, tabel set, chart, form, dan CTA. Review independen atas 15 render Compose normal-font menyatakan temuan visual material selesai. Lihat [bukti render dan cara reproduksi](screenshots/ui-rebuild/README.md) serta [sistem visual](DESIGN.md).
 
 Render ini memakai Layoutlib, bukan emulator. Screenshot lama pada `screenshots/runtime/` mendahului rebuild. QA runtime setelah rebuild belum diulang; rotasi dan font 200% ditunda sesuai prioritas pengguna. Bahasa Indonesia, data akun nyata, dan batas fitur PRD tetap dipertahankan.
+
+## Perbaikan Auth dan QA runtime terbaru
+
+Konfigurasi Firebase kini dibaca saat runtime agar perubahan flag Gradle tidak memakai nilai kosong dari build lama. Debug tanpa konfigurasi production lengkap otomatis memakai Auth Emulator; release tetap menonaktifkannya. [Panduan menjalankan](how-to-run.md) mencakup koneksi emulator dan opsi build hemat RAM. Setelah perbaikan, 34/34 tes UI/Auth lulus pada emulator API 37, termasuk 15 screenshot runtime dan alur penyimpanan workout. Tombol History → Home juga diperbaiki. Lihat [laporan QA runtime](screenshots/runtime/rebuild-api37/README.md); rotasi dan font 200% tetap ditunda.

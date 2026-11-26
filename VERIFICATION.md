@@ -1,5 +1,13 @@
 # Verifikasi ATHRA
 
+## Perbaikan Firebase dan QA runtime — 26 November 2026
+
+Peringatan konfigurasi Firebase ditelusuri ke bytecode Kotlin lama yang masih meng-inline string kosong walaupun BuildConfig sudah berisi konfigurasi Auth Emulator. Field konfigurasi kini non-constant dan dibaca saat runtime; debug otomatis memakai emulator jika konfigurasi production belum lengkap, sedangkan release tetap menonaktifkannya.
+
+**34/34 tes UI/Auth instrumentation lulus** di Android Emulator API 37, font 1.0, setelah perbaikan. Termasuk 2 integration test Firebase (startup, daftar, nama, sign out/sign in), 11 smoke, 2 navigasi workout, 4 validasi auth, dan 15 capture runtime. Unit test kalkulasi 14/14 juga lulus pada build perbaikan awal. Alur navigasi History → Home yang mengembalikan History akibat restoreState diperbaiki; pemeriksaan manual pada aplikasi utama mengonfirmasi tombol kembali, Progress, Profile, Edit Profile, dan Preferences. Sesi akun default dan data pengguna dipertahankan.
+
+Lihat [laporan serta screenshot runtime terbaru](screenshots/runtime/rebuild-api37/README.md). Capture memakai fixture terpisah; bukan data akun pengguna. Rotasi/font 200% tetap ditunda. Pengujian setelah restart laptop memakai build satu worker, heap 640–768 MB, cache pada disk, dan eksekusi tes sesudah build selesai. Panduan menjalankan app telah diperbarui di [how-to-run.md](how-to-run.md).
+
 ## UI rebuild — 26 November 2026
 
 Rebuild visual mencakup delapan layar utama dan enam supporting screens dari PDF lokal; Workout Detail memakai sistem visual yang sama. Font Inter kini memakai instance statis untuk bobot 400/500/600/700; seluruh slot typography dan color roles diatur. Home, Active Workout, Library, Summary, Progress, Profile, Auth, Pre-workout, dan supporting flows dicocokkan dengan render PDF.
