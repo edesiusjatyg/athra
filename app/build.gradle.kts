@@ -1,4 +1,5 @@
 plugins {
+    id("com.android.compose.screenshot") version "0.0.1-alpha16"
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
@@ -19,6 +20,7 @@ val firebaseAppId = providers.gradleProperty("athra.firebase.appId").orElse("").
 val firebaseApiKey = providers.gradleProperty("athra.firebase.apiKey").orElse("").get()
 
 android {
+    experimentalProperties["android.experimental.enableScreenshotTest"] = true
     namespace = "id.ac.ub.athra"
     compileSdk {
         version = release(37)
@@ -80,6 +82,8 @@ android {
 }
 
 dependencies {
+    screenshotTestImplementation("com.android.tools.screenshot:screenshot-validation-api:0.0.1-alpha16")
+    screenshotTestImplementation(libs.androidx.compose.ui.tooling)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
