@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -302,11 +304,20 @@ fun EditProfileScreen(initialName: String, email: String, error: String?, onBack
             Spacer(Modifier.height(32.dp))
             Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface).padding(16.dp)) {
                 Text("Nama tampilan", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Ink)
-                TextField(value = name, onValueChange = { name = it }, singleLine = true,
-                    placeholder = { Text("Nama") },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+                Spacer(Modifier.height(8.dp))
+                BasicTextField(
+                    value = name, onValueChange = { name = it }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = Secondary),
+                    cursorBrush = SolidColor(Accent),
                     modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Nama tampilan" },
-                    colors = TextFieldDefaults.colors(focusedContainerColor = Surface, unfocusedContainerColor = Surface, focusedIndicatorColor = Accent, unfocusedIndicatorColor = Border),
+                    decorationBox = { field ->
+                        Box {
+                            if (name.isEmpty()) Text("Nama", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                            field()
+                        }
+                    },
                 )
             }
             Spacer(Modifier.height(12.dp))
