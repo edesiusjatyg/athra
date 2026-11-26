@@ -20,7 +20,6 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Logout
-import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Scale
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,6 +39,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import id.ac.ub.athra.domain.calculation.*
 import id.ac.ub.athra.domain.model.*
 import id.ac.ub.athra.ui.components.*
@@ -66,9 +66,9 @@ fun ProgressScreen(
     val visibleDays = daily.subList((pageEnd - daysPerPage).coerceAtLeast(0), pageEnd)
     Scaffold(containerColor = Background, bottomBar = { AthraBottomNav(2, onNavigate) }) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(12.dp))
             AthraBrandHeader(onProfile = { onNavigate(3) })
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(16.dp))
             Text("Progres latihanmu", style = MaterialTheme.typography.headlineLarge, color = Ink)
             Spacer(Modifier.height(8.dp))
             Text("Bangun kekuatan lewat konsistensi.", style = MaterialTheme.typography.bodyLarge, color = Secondary)
@@ -338,7 +338,7 @@ fun ProfileScreen(
 ) {
     Scaffold(containerColor = Background, bottomBar = { AthraBottomNav(3, onNavigate) }) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(16.dp))
             Text("ATHRA", style = MaterialTheme.typography.headlineMedium, color = Ink, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(30.dp))
             Text("Profil", style = MaterialTheme.typography.headlineLarge, color = Ink)
@@ -346,7 +346,7 @@ fun ProfileScreen(
             Text("Latihanmu, caramu.", style = MaterialTheme.typography.bodyLarge, color = Secondary)
             Spacer(Modifier.height(24.dp))
             Row(Modifier.fillMaxWidth().clip(CardShape).background(Surface).padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(78.dp).background(Forest, CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.PersonOutline, null, tint = Accent, modifier = Modifier.size(36.dp)) }
+                Box(Modifier.size(78.dp).background(Forest, CircleShape), contentAlignment = Alignment.Center) { Icon(AthraIcons.Profile, null, tint = Accent, modifier = Modifier.size(36.dp)) }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
                     Text(userName, style = MaterialTheme.typography.headlineMedium, color = Ink)
@@ -360,7 +360,10 @@ fun ProfileScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 ProfileStat("${analytics?.sessionCount ?: 0}", "Sesi", Modifier.weight(1f))
                 ProfileStat("${analytics?.setCount ?: 0}", "Set", Modifier.weight(1f))
-                ProfileStat(analytics?.volumeKg?.let { compactNumber(displayWeight(it, weightUnit)) } ?: "0", "Volume (${weightUnit.name.lowercase()})", Modifier.weight(1f))
+                ProfileStat(analytics?.volumeKg?.let { volume ->
+                    val displayed = displayWeight(volume, weightUnit)
+                    if (displayed.abs() >= BigDecimal(10000)) "${displayed.divideToIntegralValue(BigDecimal(1000)).toBigInteger()}k" else displayNumber(displayed)
+                } ?: "0", "Volume (${weightUnit.name.lowercase()})", Modifier.weight(1f))
             }
             Spacer(Modifier.height(8.dp))
             Text("Statistik minggu ini", style = MaterialTheme.typography.labelSmall, color = Secondary)
@@ -388,10 +391,10 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileStat(value: String, label: String, modifier: Modifier) {
-    Column(modifier.clip(CardShape).background(Surface).padding(12.dp)) {
-        Text(value, style = MaterialTheme.typography.titleLarge, color = Ink)
+    Column(modifier.height(90.dp).clip(CardShape).background(Surface).padding(12.dp)) {
+        Text(value, style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp), color = Ink, maxLines = 1)
         Spacer(Modifier.height(10.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Secondary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Secondary, maxLines = 1)
     }
 }
 

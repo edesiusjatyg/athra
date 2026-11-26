@@ -41,7 +41,7 @@ fun AuthScreen(
     Scaffold(containerColor = Background) { insets ->
         Column(
             Modifier.fillMaxSize().padding(insets).imePadding().verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp).padding(top = 32.dp, bottom = 32.dp),
+                .padding(horizontal = 24.dp).padding(top = 20.dp, bottom = 32.dp),
         ) {
             AthraBrandHeader()
             Spacer(Modifier.height(if (registering) 32.dp else 56.dp))
