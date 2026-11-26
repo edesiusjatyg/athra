@@ -87,7 +87,7 @@ fun AthraBrandHeader(onProfile: (() -> Unit)? = null) {
 
 @Composable
 fun AthraScreenHeader(title: String, onBack: () -> Unit, action: @Composable (() -> Unit)? = null) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().statusBarsPadding().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
             Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Kembali", tint = Ink, modifier = Modifier.size(22.dp))
         }
