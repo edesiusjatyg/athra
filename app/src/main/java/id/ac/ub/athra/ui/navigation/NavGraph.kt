@@ -27,6 +27,7 @@ import id.ac.ub.athra.ui.screens.ProgressScreen
 import id.ac.ub.athra.ui.screens.HistoryScreen
 import id.ac.ub.athra.ui.screens.WorkoutDetailScreen
 import id.ac.ub.athra.ui.screens.PreferencesScreen
+import id.ac.ub.athra.ui.screens.ProfileScreen
 import id.ac.ub.athra.ui.screens.EditProfileScreen
 import id.ac.ub.athra.ui.screens.AthraBottomNav
 import id.ac.ub.athra.ui.theme.Background
@@ -205,6 +206,8 @@ fun AthraNavGraph(
                 ExerciseLibraryScreen(
                     state = graphState,
                     onSearchChange = graphViewModel::updateLibrarySearch,
+                    onFilterChange = { filter -> graphViewModel.updatePendingLibraryFilter(filter); graphViewModel.applyLibraryFilter() },
+                    onNavigate = { tab -> if (tab != 1) navController.navigateTab(tab) },
                     onOpenFilters = { navController.navigate(Routes.ExerciseFilters.route) },
                     onOpenDetails = { exerciseId -> navController.navigate(Routes.ExerciseDetails.create(exerciseId)) },
                     busy = graphState.busy,
@@ -387,25 +390,20 @@ fun AthraNavGraph(
             )
         }
         composable(Routes.Profile.route) {
-            androidx.compose.material3.Scaffold(
-                containerColor = Background,
-                bottomBar = {
-                    AthraBottomNav(selected = 3) { tab -> if (tab != 3) navController.navigateTab(tab) }
-                },
-                topBar = { TopAppBar(title = { Text("Profil") }) },
-            ) { insets ->
-                Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp)) {
-                    if (workoutState.profileLoading && workoutState.profileName.isBlank()) CircularProgressIndicator()
-                    workoutState.profileError?.let {
-                        Text(it, color = MaterialTheme.colorScheme.error)
-                        TextButton(onClick = { workoutViewModel.refreshProfile() }) { Text("Coba lagi") }
-                    }
-                    Text(userName, style = MaterialTheme.typography.headlineMedium)
-                    Text(userEmail, color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Data latihan tersimpan di perangkat ini.")
-                    TextButton(onClick = { navController.navigate(Routes.EditProfile.route) }) { Text("Edit profil") }
-                    TextButton(onClick = { navController.navigate(Routes.Preferences.route) }) { Text("Preferensi satuan") }
-                    TextButton(onClick = onSignOut) { Text("Keluar") }
+            ProfileScreen(
+                userName = userName,
+                userEmail = userEmail,
+                analytics = workoutState.homeAnalytics,
+                weightUnit = weightUnit,
+                loading = workoutState.profileLoading && workoutState.profileName.isBlank(),
+                error = workoutState.profileError,
+                onRetry = { workoutViewModel.refreshProfile() },
+                onNavigate = { tab -> if (tab != 3) navController.navigateTab(tab) },
+                onEdit = { navController.navigate(Routes.EditProfile.route) },
+                onPreferences = { navController.navigate(Routes.Preferences.route) },
+                onHistory = { workoutViewModel.refreshHistory(); navController.navigate(Routes.History.route) },
+                onSignOut = onSignOut,
+            ) {
                     if (BuildConfig.DEBUG && BuildConfig.AUTH_EMULATOR_ENABLED) {
                         Spacer(Modifier.height(8.dp))
                         Text("Demo Auth Emulator", style = MaterialTheme.typography.titleSmall)
@@ -425,7 +423,6 @@ fun AthraNavGraph(
                             )
                         }
                     }
-                }
             }
         }
         composable(

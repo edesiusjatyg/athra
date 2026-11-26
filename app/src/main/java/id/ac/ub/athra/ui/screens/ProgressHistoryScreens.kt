@@ -2,317 +2,394 @@ package id.ac.ub.athra.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.Scale
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.unit.dp
-import id.ac.ub.athra.domain.calculation.displayNumber
-import id.ac.ub.athra.domain.calculation.calculateTotals
-import id.ac.ub.athra.domain.calculation.displayWeight
-import id.ac.ub.athra.domain.model.AnalyticsSummary
-import id.ac.ub.athra.domain.model.CompletedWorkout
-import id.ac.ub.athra.domain.model.PersonalRecordStatus
-import id.ac.ub.athra.domain.model.WeightUnit
-import id.ac.ub.athra.domain.model.WorkoutSession
-import id.ac.ub.athra.ui.components.AthraCard
-import id.ac.ub.athra.ui.theme.Accent
-import id.ac.ub.athra.ui.theme.Background
-import id.ac.ub.athra.ui.theme.Ink
-import id.ac.ub.athra.ui.theme.Secondary
-import id.ac.ub.athra.ui.theme.Surface
+import id.ac.ub.athra.domain.calculation.*
+import id.ac.ub.athra.domain.model.*
+import id.ac.ub.athra.ui.components.*
+import id.ac.ub.athra.ui.theme.*
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun ProgressScreen(
-    analytics: AnalyticsSummary?,
-    periodDays: Int,
-    weightUnit: WeightUnit,
-    onPeriodChange: (Int) -> Unit,
-    onNavigate: (Int) -> Unit,
-    loading: Boolean = false,
-    error: String? = null,
-    onRetry: () -> Unit = {},
+    analytics: AnalyticsSummary?, periodDays: Int, weightUnit: WeightUnit,
+    onPeriodChange: (Int) -> Unit, onNavigate: (Int) -> Unit,
+    loading: Boolean = false, error: String? = null, onRetry: () -> Unit = {},
 ) {
+    var chartPage by remember(analytics, periodDays) { mutableIntStateOf(Int.MAX_VALUE) }
+    val unit = weightUnit.name.lowercase()
+    val daily = analytics?.dailyVolumeKg.orEmpty()
+    val pageCount = ((daily.size + 6) / 7).coerceAtLeast(1)
+    val page = chartPage.coerceIn(0, pageCount - 1)
+    val visibleDays = daily.drop(page * 7).take(7)
+    Scaffold(containerColor = Background, bottomBar = { AthraBottomNav(2, onNavigate) }) { insets ->
+        Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
+            Spacer(Modifier.height(24.dp))
+            AthraBrandHeader(onProfile = { onNavigate(3) })
+            Spacer(Modifier.height(30.dp))
+            Text("Progres latihanmu", style = MaterialTheme.typography.headlineLarge, color = Ink)
+            Spacer(Modifier.height(8.dp))
+            Text("Bangun kekuatan lewat konsistensi.", style = MaterialTheme.typography.bodyLarge, color = Secondary)
+            Spacer(Modifier.height(26.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(7, 30, 90).forEach { days ->
+                    FilterChip(
+                        selected = periodDays == days, onClick = { onPeriodChange(days) },
+                        label = { Text("${days}H", fontWeight = FontWeight.SemiBold) },
+                        shape = RoundedCornerShape(50),
+                        colors = FilterChipDefaults.filterChipColors(containerColor = Surface, selectedContainerColor = Forest, labelColor = Secondary, selectedLabelColor = Ink),
+                        border = FilterChipDefaults.filterChipBorder(enabled = true, selected = periodDays == days, borderColor = Border, selectedBorderColor = Forest),
+                    )
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            val placeholder = if (loading || error != null) "—" else "0"
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ProgressMetric("Sesi", analytics?.sessionCount?.toString() ?: placeholder, "$periodDays hari terakhir", Modifier.weight(1f))
+                ProgressMetric("Volume · $unit", analytics?.volumeKg?.let { compactNumber(displayWeight(it, weightUnit)) } ?: placeholder, "Total beban terangkat", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(20.dp))
+            Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface).border(1.dp, Border, CardShape).padding(16.dp)) {
+                Text("Volume latihan", style = MaterialTheme.typography.headlineSmall, color = Ink)
+                Spacer(Modifier.height(6.dp))
+                Text("$periodDays hari terakhir · beban ($unit)", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                Spacer(Modifier.height(12.dp))
+                if (loading && analytics == null) {
+                    Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                } else if (analytics == null || analytics.sessionCount == 0) {
+                    Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) { Text(if (error != null) "Data belum dapat dimuat" else "Belum ada data latihan", color = Secondary, style = MaterialTheme.typography.bodyMedium) }
+                } else {
+                    val max = daily.maxOfOrNull { it.second }?.toFloat()?.coerceAtLeast(1f) ?: 1f
+                    val description = visibleDays.joinToString { (day, value) -> "${dayLabel(day)}: ${displayNumber(displayWeight(value, weightUnit))} $unit" }
+                    Canvas(Modifier.fillMaxWidth().height(150.dp).semantics { contentDescription = description }) {
+                        val gap = 14.dp.toPx()
+                        val width = (size.width - gap * 8) / 7
+                        visibleDays.forEachIndexed { index, (_, value) ->
+                            val height = (size.height * value.toFloat() / max).coerceAtLeast(4.dp.toPx())
+                            drawRoundRect(if (value.signum() > 0) Accent else Forest, Offset(gap + index * (width + gap), size.height - height), Size(width, height), CornerRadius(6.dp.toPx()))
+                        }
+                        drawLine(Border, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
+                    }
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceAround) {
+                        visibleDays.forEach { (day, _) -> Text(dayLabel(day), color = Secondary, style = MaterialTheme.typography.labelSmall) }
+                    }
+                }
+                Row(Modifier.fillMaxWidth().height(32.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    IconButton(onClick = { chartPage = page - 1 }, enabled = page > 0) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Hari sebelumnya", tint = if (page > 0) Accent else Forest, modifier = Modifier.size(20.dp)) }
+                    IconButton(onClick = { chartPage = page + 1 }, enabled = page < pageCount - 1) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Hari berikutnya", tint = if (page < pageCount - 1) Accent else Forest, modifier = Modifier.size(20.dp)) }
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface).border(1.dp, Border, CardShape).padding(16.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Gerakan favorit", style = MaterialTheme.typography.headlineSmall, color = Ink)
+                    Text("${analytics?.favoriteSessionCount ?: 0} sesi", style = MaterialTheme.typography.labelSmall, color = Secondary)
+                }
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(32.dp).background(Forest, CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.FitnessCenter, null, tint = Accent, modifier = Modifier.size(18.dp)) }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(analytics?.favoriteExercise?.name ?: "Belum ada data", color = Ink, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text("${analytics?.setCount ?: 0} set · ${analytics?.repCount ?: 0} repetisi", color = Secondary, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+            if (error != null) { Spacer(Modifier.height(12.dp)); Text(error, color = MaterialTheme.colorScheme.error); TextButton(onClick = onRetry) { Text("Coba lagi") } }
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+private fun dayLabel(epoch: Long) = Instant.ofEpochMilli(epoch).atZone(ZoneId.systemDefault()).dayOfMonth.toString()
+
+private fun compactNumber(value: BigDecimal): String = if (value.abs() >= BigDecimal(10000)) "${displayNumber(value.divide(BigDecimal(1000)))}k" else displayNumber(value)
+
+@Composable
+private fun ProgressMetric(label: String, value: String, detail: String, modifier: Modifier) {
+    Column(modifier.clip(CardShape).background(Surface).border(1.dp, Border, CardShape).padding(14.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = Secondary)
+        Spacer(Modifier.height(10.dp))
+        Text(value, style = MaterialTheme.typography.titleLarge, color = Ink)
+        Spacer(Modifier.height(10.dp))
+        Text(detail, style = MaterialTheme.typography.labelSmall, color = Accent)
+    }
+}
+
+@Composable
+fun HistoryScreen(sessions: List<WorkoutSession>, onNavigate: (Int) -> Unit, onOpen: (String) -> Unit, loading: Boolean = false, error: String? = null, onRetry: () -> Unit = {}) {
+    val formatter = remember { DateTimeFormatter.ofPattern("d MMM · HH:mm", Locale.forLanguageTag("id-ID")) }
     Scaffold(
         containerColor = Background,
-        bottomBar = { AthraBottomNav(selected = 2, onSelect = onNavigate) },
-        topBar = { TopAppBar(title = { Text("Progress") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)) },
+        topBar = { AthraScreenHeader("Riwayat latihan", { onNavigate(0) }) },
+        bottomBar = { AthraPrimaryButton("Kembali ke beranda", { onNavigate(0) }, Modifier.navigationBarsPadding().padding(24.dp)) },
     ) { insets ->
-        Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp)) {
-            if (error != null) {
-                Text(error, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Coba lagi") }
+        Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
+            Spacer(Modifier.height(20.dp))
+            Text("Riwayat latihan", style = MaterialTheme.typography.headlineLarge, color = Ink)
+            Spacer(Modifier.height(10.dp))
+            Text("Sesi yang telah kamu selesaikan", style = MaterialTheme.typography.bodyLarge, color = Secondary)
+            Spacer(Modifier.height(32.dp))
+            if (loading && sessions.isEmpty()) CircularProgressIndicator()
+            if (error != null) { Text(error, color = MaterialTheme.colorScheme.error); TextButton(onClick = onRetry) { Text("Coba lagi") } }
+            if (!loading && sessions.isEmpty() && error == null) Text("Belum ada sesi latihan.", color = Secondary)
+            sessions.forEach { session ->
+                Row(Modifier.fillMaxWidth().clip(CardShape).background(Surface).clickable { onOpen(session.id) }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(session.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Ink)
+                        Spacer(Modifier.height(8.dp))
+                        val duration = ((session.endedAt ?: session.startedAt) - session.startedAt).coerceAtLeast(0) / 60000
+                        Text("${formatter.format(Instant.ofEpochMilli(session.endedAt ?: session.startedAt).atZone(ZoneId.systemDefault()))} · $duration mnt", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                    }
+                    Icon(Icons.Outlined.ChevronRight, null, tint = Accent, modifier = Modifier.size(20.dp))
+                }
                 Spacer(Modifier.height(12.dp))
             }
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                listOf(7, 30, 90).forEachIndexed { index, days ->
-                    SegmentedButton(
-                        selected = periodDays == days,
-                        onClick = { onPeriodChange(days) },
-                        shape = SegmentedButtonDefaults.itemShape(index, 3),
-                    ) { Text("$days hari") }
-                }
-            }
+        }
+    }
+}
+
+@Composable
+fun WorkoutDetailScreen(workout: CompletedWorkout?, weightUnit: WeightUnit, onBack: () -> Unit, loading: Boolean = false, error: String? = null, onRetry: () -> Unit = {}) {
+    Scaffold(containerColor = Background, topBar = { AthraScreenHeader("Detail latihan", onBack) }) { insets ->
+        Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             Spacer(Modifier.height(20.dp))
-            val metricPlaceholder = if (loading || error != null) "—" else "0"
-            if (LocalDensity.current.fontScale >= 1.5f) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Metric("Sesi", analytics?.sessionCount?.toString() ?: metricPlaceholder, Modifier.fillMaxWidth())
-                    Metric("Set", analytics?.setCount?.toString() ?: metricPlaceholder, Modifier.fillMaxWidth())
-                    Metric("Repetisi", analytics?.repCount?.toString() ?: metricPlaceholder, Modifier.fillMaxWidth())
-                    Metric("Volume", "${analytics?.volumeKg?.let { displayNumber(displayWeight(it, weightUnit)) } ?: metricPlaceholder} ${weightUnit.name.lowercase()}", Modifier.fillMaxWidth())
-                }
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Metric("Sesi", analytics?.sessionCount?.toString() ?: metricPlaceholder, Modifier.weight(1f))
-                    Metric("Set", analytics?.setCount?.toString() ?: metricPlaceholder, Modifier.weight(1f))
-                }
+            if (loading && workout == null) CircularProgressIndicator()
+            else if (workout == null) { Text(error ?: "Detail sesi tidak tersedia.", color = Secondary); if (error != null) TextButton(onClick = onRetry) { Text("Coba lagi") } }
+            else {
+                val draft = workout.draft
+                val totals = calculateTotals(draft)
+                Text(draft.session.name, style = MaterialTheme.typography.headlineLarge, color = Ink)
                 Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Metric("Repetisi", analytics?.repCount?.toString() ?: metricPlaceholder, Modifier.weight(1f))
-                    Metric("Volume", "${analytics?.volumeKg?.let { displayNumber(displayWeight(it, weightUnit)) } ?: metricPlaceholder} ${weightUnit.name.lowercase()}", Modifier.weight(1f))
+                val seconds = (((draft.session.endedAt ?: draft.session.startedAt) - draft.session.startedAt).coerceAtLeast(0) / 1000)
+                val completedAt = Instant.ofEpochMilli(draft.session.endedAt ?: draft.session.startedAt).atZone(ZoneId.systemDefault())
+                Text(DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale.forLanguageTag("id-ID")).format(completedAt), color = Secondary, style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.height(26.dp))
+                AthraCard {
+                    Text("Ringkasan sesi", style = MaterialTheme.typography.headlineSmall, color = Ink)
+                    Spacer(Modifier.height(12.dp))
+                    Text("Durasi %02d:%02d:%02d".format(seconds / 3600, seconds % 3600 / 60, seconds % 60), color = Ink)
+                    Text("${totals.setCount} set · ${totals.repCount} repetisi · ${displayNumber(displayWeight(totals.volumeKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Secondary, style = MaterialTheme.typography.bodyMedium)
                 }
-            }
-            Spacer(Modifier.height(20.dp))
-            Text("Volume harian", style = MaterialTheme.typography.titleLarge, color = Ink)
-            Spacer(Modifier.height(10.dp))
-            if (loading && analytics == null) {
-                Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else if (analytics == null && error != null) {
-                Text("Data latihan belum dapat dimuat.", color = Secondary, modifier = Modifier.padding(vertical = 24.dp))
-            } else if (analytics == null || analytics.sessionCount == 0) {
-                Text("Belum ada data latihan", color = Secondary, modifier = Modifier.padding(vertical = 24.dp))
-            } else {
-                val maxValue = analytics.dailyVolumeKg.maxOfOrNull { it.second }?.toFloat()?.coerceAtLeast(1f) ?: 1f
-                val chartDescription = analytics.dailyVolumeKg.joinToString { (day, value) ->
-                    "${Instant.ofEpochMilli(day).atZone(ZoneId.systemDefault()).toLocalDate()}: ${displayNumber(displayWeight(value, weightUnit))} ${weightUnit.name.lowercase()}"
-                }
-                Canvas(Modifier.fillMaxWidth().height(180.dp).background(Surface, RoundedCornerShape(16.dp)).padding(12.dp).semantics { contentDescription = chartDescription }) {
-                    val gap = if (analytics.dailyVolumeKg.size > 45) 0f else 4.dp.toPx()
-                    val barWidth = ((size.width - gap * (analytics.dailyVolumeKg.size - 1)) / analytics.dailyVolumeKg.size).coerceAtLeast(0.5f)
-                    analytics.dailyVolumeKg.forEachIndexed { index, entry ->
-                        if (entry.second.signum() == 0) return@forEachIndexed
-                        val height = size.height * (entry.second.toFloat() / maxValue)
-                        drawRoundRect(
-                            color = Accent,
-                            topLeft = androidx.compose.ui.geometry.Offset(index * (barWidth + gap), size.height - height),
-                            size = androidx.compose.ui.geometry.Size(barWidth, height.coerceAtLeast(2.dp.toPx())),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()),
-                        )
+                Spacer(Modifier.height(24.dp))
+                draft.exercises.forEach { item ->
+                    AthraCard {
+                        Text(item.exercise.name, style = MaterialTheme.typography.headlineSmall, color = Ink)
+                        Spacer(Modifier.height(6.dp))
+                        Text("${item.exercise.primaryMuscleGroup} · ${item.exercise.equipment}", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                        Spacer(Modifier.height(14.dp))
+                        item.sets.forEach { set ->
+                            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Set ${set.number}", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                                Text("${set.reps} × ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}", style = MaterialTheme.typography.bodyMedium, color = Ink)
+                            }
+                        }
+                        workout.personalRecords.firstOrNull { it.exerciseId == item.exercise.id }?.let { record ->
+                            val status = when (record.status) {
+                                PersonalRecordStatus.BASELINE -> "Catatan awal"
+                                PersonalRecordStatus.NEW_RECORD -> "Rekor baru"
+                                PersonalRecordStatus.MATCHED -> "Menyamai rekor"
+                                PersonalRecordStatus.BELOW_RECORD -> "Belum melampaui rekor"
+                            }
+                            Spacer(Modifier.height(10.dp))
+                            Text("$status · ${displayNumber(displayWeight(record.currentMaxKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Accent, style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
+                    Spacer(Modifier.height(12.dp))
                 }
             }
-            Spacer(Modifier.height(20.dp))
-            Text("Gerakan favorit", style = MaterialTheme.typography.titleLarge, color = Ink)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                analytics?.favoriteExercise?.let { "${it.name} · ${analytics.favoriteSessionCount} sesi" }
-                    ?: if (loading || error != null) "—" else "Belum ada data",
-                color = Secondary,
-            )
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
 
 @Composable
-private fun Metric(label: String, value: String, modifier: Modifier = Modifier) {
-    AthraCard(modifier) {
-        Text(value, style = MaterialTheme.typography.headlineSmall, color = Ink)
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Secondary)
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-fun HistoryScreen(
-    sessions: List<WorkoutSession>,
-    onNavigate: (Int) -> Unit,
-    onOpen: (String) -> Unit,
-    loading: Boolean = false,
-    error: String? = null,
-    onRetry: () -> Unit = {},
-) {
-    val formatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale("id", "ID")) }
-    Scaffold(
-        containerColor = Background,
-        bottomBar = { AthraBottomNav(selected = 1, onSelect = onNavigate) },
-        topBar = { TopAppBar(title = { Text("Riwayat latihan") }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)) },
-    ) { insets ->
-        if (loading && sessions.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        } else if (sessions.isEmpty()) {
-            Column(
-                Modifier.fillMaxSize().padding(insets).padding(24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(error ?: "Belum ada sesi latihan.", color = Secondary)
-                if (error != null) TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Coba lagi") }
-            }
-        } else Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp)) {
-            if (error != null) {
-                Text(error, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Coba lagi") }
-            }
-            sessions.forEach { session ->
-                TextButton(onClick = { onOpen(session.id) }, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.fillMaxWidth()) {
-                        Text(session.name, color = Ink, style = MaterialTheme.typography.titleMedium)
-                        Text(formatter.format(Instant.ofEpochMilli(session.endedAt ?: session.startedAt).atZone(ZoneId.systemDefault())), color = Secondary)
-                    }
-                }
-                HorizontalDivider(color = Color.DarkGray)
-            }
-        }
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-fun WorkoutDetailScreen(
-    workout: CompletedWorkout?,
-    weightUnit: WeightUnit,
-    onBack: () -> Unit,
-    loading: Boolean = false,
-    error: String? = null,
-    onRetry: () -> Unit = {},
-) {
-    Scaffold(
-        containerColor = Background,
-        topBar = { TopAppBar(title = { Text("Detail latihan") }, navigationIcon = { TextButton(onClick = onBack) { Text("Kembali") } }) },
-    ) { insets ->
-        val data = workout
-        if (loading && data == null) Box(Modifier.fillMaxSize().padding(insets), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        } else if (data == null) Column(
-            Modifier.fillMaxSize().padding(insets).padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(error ?: "Detail sesi tidak tersedia.", color = Secondary)
-            if (error != null) TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("Coba lagi") }
-        } else Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp)) {
-            val draft = data.draft
-            val totals = calculateTotals(draft)
-            Text(draft.session.name, style = MaterialTheme.typography.headlineMedium, color = Ink)
-            val durationSeconds = (((draft.session.endedAt ?: draft.session.startedAt) - draft.session.startedAt).coerceAtLeast(0) / 1_000)
-            Text("Durasi %02d:%02d:%02d".format(durationSeconds / 3_600, durationSeconds % 3_600 / 60, durationSeconds % 60), color = Secondary)
-            val completedAt = Instant.ofEpochMilli(draft.session.endedAt ?: draft.session.startedAt).atZone(ZoneId.systemDefault())
-            Text(DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale("id", "ID")).format(completedAt), color = Secondary)
-            Text("${totals.setCount} set · ${totals.repCount} repetisi · ${displayNumber(displayWeight(totals.volumeKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Secondary)
-            Spacer(Modifier.height(20.dp))
-            draft.exercises.forEach { item ->
-                Text(item.exercise.name, style = MaterialTheme.typography.titleLarge, color = Ink)
-                item.sets.forEach { set ->
-                    Text("Set ${set.number} · ${set.reps} repetisi · ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}")
-                }
-                data.personalRecords.firstOrNull { it.exerciseId == item.exercise.id }?.let { record ->
-                    val status = when (record.status) {
-                        PersonalRecordStatus.BASELINE -> "Catatan awal"
-                        PersonalRecordStatus.NEW_RECORD -> "Rekor baru"
-                        PersonalRecordStatus.MATCHED -> "Menyamai rekor"
-                        PersonalRecordStatus.BELOW_RECORD -> "Belum melampaui rekor"
-                    }
-                    Text("$status · ${displayNumber(displayWeight(record.currentMaxKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Accent)
-                }
-                Spacer(Modifier.height(16.dp))
-            }
-        }
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-fun PreferencesScreen(initialUnit: id.ac.ub.athra.domain.model.WeightUnit, onBack: () -> Unit, onSave: (id.ac.ub.athra.domain.model.WeightUnit) -> Unit) {
+fun PreferencesScreen(initialUnit: WeightUnit, onBack: () -> Unit, onSave: (WeightUnit) -> Unit) {
     var selected by rememberSaveable(initialUnit) { mutableStateOf(initialUnit) }
     Scaffold(
-        containerColor = Background,
-        topBar = { TopAppBar(title = { Text("Preferensi") }, navigationIcon = { TextButton(onClick = onBack) { Text("Batal") } }) },
+        containerColor = Background, topBar = { AthraScreenHeader("Preferensi", onBack) },
+        bottomBar = { AthraPrimaryButton("Simpan preferensi", { onSave(selected) }, Modifier.navigationBarsPadding().padding(24.dp)) },
     ) { insets ->
-        Column(Modifier.fillMaxSize().padding(insets).padding(20.dp)) {
-            Text("Satuan beban", style = MaterialTheme.typography.titleLarge, color = Ink)
-            Spacer(Modifier.height(8.dp))
-            listOf(id.ac.ub.athra.domain.model.WeightUnit.KG, id.ac.ub.athra.domain.model.WeightUnit.LB).forEach { unit ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().selectable(
-                        selected = selected == unit,
-                        onClick = { selected = unit },
-                        role = Role.RadioButton,
-                    ).heightIn(min = 48.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RadioButton(selected = selected == unit, onClick = null)
-                    Text(if (unit == id.ac.ub.athra.domain.model.WeightUnit.KG) "Kilogram (kg)" else "Pound (lb)")
+        Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
+            Spacer(Modifier.height(20.dp))
+            Text("Preferensi", style = MaterialTheme.typography.headlineLarge, color = Ink)
+            Spacer(Modifier.height(10.dp))
+            Text("Sesuaikan ATHRA untukmu", style = MaterialTheme.typography.bodyLarge, color = Secondary)
+            Spacer(Modifier.height(32.dp))
+            ReadOnlySetting("Tampilan", "Mode gelap")
+            Spacer(Modifier.height(12.dp))
+            Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface).padding(16.dp)) {
+                Text("Satuan beban", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Ink)
+                Spacer(Modifier.height(8.dp))
+                listOf(WeightUnit.KG, WeightUnit.LB).forEach { unit ->
+                    Row(Modifier.fillMaxWidth().selectable(selected == unit, onClick = { selected = unit }, role = Role.RadioButton).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected == unit, onClick = null)
+                        Text(if (unit == WeightUnit.KG) "Kilogram (kg)" else "Pound (lb)", style = MaterialTheme.typography.bodyMedium, color = if (selected == unit) Ink else Secondary)
+                    }
                 }
+                Text("Contoh: 32 kg = 70.55 lb", color = Secondary, style = MaterialTheme.typography.bodyMedium)
             }
-            Text("Contoh: 32 kg = 70.55 lb", color = Secondary, modifier = Modifier.padding(top = 8.dp))
-            Spacer(Modifier.weight(1f))
-            Button(onClick = { onSave(selected) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Simpan") }
+            Spacer(Modifier.height(12.dp))
+            ReadOnlySetting("Privasi dan data", "Riwayat latihan disimpan di perangkat ini")
         }
     }
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
-fun EditProfileScreen(
-    initialName: String,
-    email: String,
-    error: String?,
-    onBack: () -> Unit,
-    onSave: (String) -> Unit,
-    busy: Boolean = false,
-) {
+private fun ReadOnlySetting(title: String, value: String) {
+    Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface).padding(16.dp)) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Ink)
+        Spacer(Modifier.height(8.dp))
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = Secondary)
+    }
+}
+
+@Composable
+fun EditProfileScreen(initialName: String, email: String, error: String?, onBack: () -> Unit, onSave: (String) -> Unit, busy: Boolean = false) {
     var name by rememberSaveable(initialName) { mutableStateOf(initialName) }
-    val focusManager = LocalFocusManager.current
+    val focus = LocalFocusManager.current
     Scaffold(
-        containerColor = Background,
-        topBar = { TopAppBar(title = { Text("Edit profil") }, navigationIcon = { TextButton(onClick = onBack) { Text("Batal") } }) },
+        containerColor = Background, topBar = { AthraScreenHeader("Edit profil", onBack) },
+        bottomBar = { AthraPrimaryButton(if (busy) "Menyimpan…" else "Simpan profil", { focus.clearFocus(); onSave(name.trim()) }, Modifier.navigationBarsPadding().imePadding().padding(24.dp), enabled = name.isNotBlank() && !busy) },
     ) { insets ->
-        Column(
-            Modifier.fillMaxSize().padding(insets).imePadding().verticalScroll(rememberScrollState()).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Nama") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(value = email, onValueChange = {}, label = { Text("Email") }, readOnly = true, singleLine = true, modifier = Modifier.fillMaxWidth())
-            if (error != null) Text(error, color = MaterialTheme.colorScheme.error)
-            Button(
-                onClick = { focusManager.clearFocus(); onSave(name.trim()) },
-                enabled = name.isNotBlank() && !busy,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            ) {
-                if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                else Text("Simpan")
+        Column(Modifier.fillMaxSize().padding(insets).imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
+            Spacer(Modifier.height(20.dp))
+            Text("Edit profil", style = MaterialTheme.typography.headlineLarge, color = Ink)
+            Spacer(Modifier.height(10.dp))
+            Text("Informasi pribadi", style = MaterialTheme.typography.bodyLarge, color = Secondary)
+            Spacer(Modifier.height(32.dp))
+            Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface).padding(16.dp)) {
+                Text("Nama tampilan", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Ink)
+                TextField(value = name, onValueChange = { name = it }, singleLine = true,
+                    placeholder = { Text("Nama") },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(focusedContainerColor = Surface, unfocusedContainerColor = Surface, focusedIndicatorColor = Accent, unfocusedIndicatorColor = Border),
+                )
             }
+            Spacer(Modifier.height(12.dp))
+            ReadOnlySetting("Email", email)
+            Spacer(Modifier.height(12.dp))
+            ReadOnlySetting("Privasi", "Data latihan tersimpan di perangkat ini")
+            if (error != null) { Spacer(Modifier.height(12.dp)); Text(error, color = MaterialTheme.colorScheme.error) }
         }
+    }
+}
+
+@Composable
+fun ProfileScreen(
+    userName: String, userEmail: String, analytics: AnalyticsSummary?, weightUnit: WeightUnit,
+    loading: Boolean, error: String?, onRetry: () -> Unit,
+    onNavigate: (Int) -> Unit, onEdit: () -> Unit, onPreferences: () -> Unit, onHistory: () -> Unit, onSignOut: () -> Unit,
+    debugContent: @Composable ColumnScope.() -> Unit = {},
+) {
+    Scaffold(containerColor = Background, bottomBar = { AthraBottomNav(3, onNavigate) }) { insets ->
+        Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
+            Spacer(Modifier.height(30.dp))
+            Text("ATHRA", style = MaterialTheme.typography.headlineMedium, color = Ink, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(30.dp))
+            Text("Profil", style = MaterialTheme.typography.headlineLarge, color = Ink)
+            Spacer(Modifier.height(8.dp))
+            Text("Latihanmu, caramu.", style = MaterialTheme.typography.bodyLarge, color = Secondary)
+            Spacer(Modifier.height(24.dp))
+            Row(Modifier.fillMaxWidth().clip(CardShape).background(Surface).padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(78.dp).background(Forest, CircleShape), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.PersonOutline, null, tint = Accent, modifier = Modifier.size(36.dp)) }
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(userName, style = MaterialTheme.typography.headlineMedium, color = Ink)
+                    Spacer(Modifier.height(6.dp))
+                    Text("Anggota ATHRA", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                    Spacer(Modifier.height(10.dp))
+                    FilledTonalButton(onClick = onEdit, shape = RoundedCornerShape(50), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp), modifier = Modifier.heightIn(min = 32.dp), colors = ButtonDefaults.filledTonalButtonColors(containerColor = Forest, contentColor = Accent)) { Text("Edit profil", style = MaterialTheme.typography.labelSmall) }
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ProfileStat("${analytics?.sessionCount ?: 0}", "Sesi", Modifier.weight(1f))
+                ProfileStat("${analytics?.setCount ?: 0}", "Set", Modifier.weight(1f))
+                ProfileStat(analytics?.volumeKg?.let { compactNumber(displayWeight(it, weightUnit)) } ?: "0", "Volume (${weightUnit.name.lowercase()})", Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Statistik minggu ini", style = MaterialTheme.typography.labelSmall, color = Secondary)
+            if (loading) CircularProgressIndicator(Modifier.size(24.dp))
+            if (error != null) { Text(error, color = MaterialTheme.colorScheme.error); TextButton(onClick = onRetry) { Text("Coba lagi") } }
+            Spacer(Modifier.height(24.dp))
+            Text("Latihanmu", style = MaterialTheme.typography.headlineSmall, color = Ink)
+            Spacer(Modifier.height(12.dp))
+            ProfileAction(Icons.Outlined.History, "Riwayat latihan", "Lihat semua sesi tersimpan", onHistory)
+            Spacer(Modifier.height(24.dp))
+            Text("Akun & preferensi", style = MaterialTheme.typography.headlineSmall, color = Ink)
+            Spacer(Modifier.height(12.dp))
+            Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface)) {
+                ProfileAction(Icons.Outlined.Scale, "Satuan beban", if (weightUnit == WeightUnit.KG) "Kilogram (kg)" else "Pound (lb)", onPreferences)
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = Border)
+                ProfileAction(Icons.Outlined.Logout, "Keluar", userEmail, onSignOut)
+            }
+            Spacer(Modifier.height(16.dp))
+            Text("Data latihan tersimpan di perangkat ini.", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+            debugContent()
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun ProfileStat(value: String, label: String, modifier: Modifier) {
+    Column(modifier.clip(CardShape).background(Surface).padding(12.dp)) {
+        Text(value, style = MaterialTheme.typography.titleLarge, color = Ink)
+        Spacer(Modifier.height(10.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = Secondary)
+    }
+}
+
+@Composable
+private fun ProfileAction(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clip(CardShape).background(Surface).clickable(onClick = onClick).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = Accent, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = Ink)
+            Spacer(Modifier.height(6.dp))
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Secondary)
+        }
+        Icon(Icons.Outlined.ChevronRight, null, tint = Secondary, modifier = Modifier.size(20.dp))
     }
 }
