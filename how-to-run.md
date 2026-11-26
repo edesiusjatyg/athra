@@ -32,3 +32,17 @@ Jika memakai host `127.0.0.1` lewat properti `athra.authEmulatorHost`, pertahank
 - **Network / timeout:** pastikan terminal Auth Emulator masih menampilkan layanan aktif pada port 9099; jalankan lagi `adb reverse` jika memakai host `127.0.0.1`.
 
 Instalasi ulang dengan `installDebug` mempertahankan data aplikasi. Tidak perlu uninstall atau menghapus data.
+
+## Build dengan RAM lebih kecil
+
+Jika Android Studio dan Android Emulator sedang berjalan bersama, gunakan perintah berikut sebagai pengganti perintah Gradle pada langkah 3. Build memakai satu worker dan compiler Kotlin di proses yang sama, dengan heap 768 MB:
+
+```sh
+./gradlew :app:installDebug \
+  -Pathra.authEmulator=true -Pathra.authEmulatorHost=127.0.0.1 \
+  -Pkotlin.compiler.execution.strategy=in-process \
+  '-Dorg.gradle.jvmargs=-Xmx768m -XX:MaxMetaspaceSize=384m -XX:ReservedCodeCacheSize=128m -XX:ActiveProcessorCount=2' \
+  --max-workers=1 --no-parallel --no-daemon --no-watch-fs
+```
+
+Jalankan `adb reverse` sebelum build dan perintah pembuka aplikasi setelahnya seperti pada langkah 3. Jalankan tes emulator setelah proses build selesai.

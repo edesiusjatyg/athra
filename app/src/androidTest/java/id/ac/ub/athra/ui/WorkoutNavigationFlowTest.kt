@@ -114,7 +114,9 @@ class WorkoutNavigationFlowTest {
         compose.waitUntil(5_000) { !workoutViewModel.state.value.draftLoading }
         compose.onNodeWithText("Mulai workout").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Pilih caramu berlatih hari ini.").fetchSemanticsNodes().isNotEmpty() }
-        compose.waitUntil(5_000) { !workoutViewModel.state.value.draftLoading }
+        compose.waitUntil(5_000) {
+            runCatching { compose.onNodeWithText("Mulai sesi").assertIsEnabled() }.isSuccess
+        }
         compose.onNodeWithText("Mulai sesi").performClick()
 
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Pustaka gerakan").fetchSemanticsNodes().isNotEmpty() }
@@ -170,11 +172,21 @@ class WorkoutNavigationFlowTest {
         assertNotNull(runBlocking { repository.getWorkoutDetail("nav-test-user", completed.single().sessionId) })
 
         compose.onNodeWithText("Lihat semua").performScrollTo().performClick()
-        compose.onNodeWithText("Riwayat latihan").assertIsDisplayed()
+        assertEquals(Routes.History.route, testNavController!!.currentDestination?.route)
+        compose.waitUntil(5_000) {
+            runCatching { compose.onNodeWithText(completed.single().name).assertIsDisplayed() }.isSuccess
+        }
         compose.onNodeWithText(completed.single().name).performClick()
         compose.onNodeWithText("Detail latihan").assertIsDisplayed()
-        compose.onNodeWithText("Bench Press").assertIsDisplayed()
+        compose.waitUntil(5_000) {
+            runCatching { compose.onNodeWithText("Bench Press").assertIsDisplayed() }.isSuccess
+        }
         compose.onNodeWithContentDescription("Kembali").performClick()
+        compose.onNodeWithText("Kembali ke beranda").performClick()
+        assertEquals(Routes.Home.route, testNavController!!.currentDestination?.route)
+        compose.waitUntil(5_000) {
+            runCatching { compose.onNodeWithText("Profil").assertIsDisplayed() }.isSuccess
+        }
         compose.onNodeWithText("Profil").performClick()
         compose.waitUntil(5_000) {
             compose.onAllNodesWithText("Edit profil").fetchSemanticsNodes().isNotEmpty()
@@ -183,7 +195,10 @@ class WorkoutNavigationFlowTest {
         compose.onNodeWithText("Edit profil").performClick()
         compose.onNodeWithContentDescription("Nama tampilan").performTextReplacement("Nama Baru")
         compose.onNodeWithText("Simpan profil").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Nama Baru").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) {
+            testNavController!!.currentDestination?.route == Routes.Profile.route &&
+                compose.onAllNodesWithText("Nama Baru").fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("Satuan beban").performScrollTo().performClick()
         compose.onNodeWithText("Pound (lb)").performClick()
         compose.onNodeWithText("Simpan preferensi").performClick()

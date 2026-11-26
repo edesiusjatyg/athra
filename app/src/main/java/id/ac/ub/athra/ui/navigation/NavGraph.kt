@@ -532,6 +532,8 @@ private fun NavHostController.navigateTab(tab: Int) {
     navigate(route) {
         popUpTo(Routes.Home.route) { saveState = true }
         launchSingleTop = true
-        restoreState = true
+        // Home remains the root. Restoring its saved stack can reopen History
+        // immediately after the user explicitly asks to return to Home.
+        restoreState = tab != 0
     }
 }
