@@ -2,6 +2,25 @@ package id.ac.ub.athra.ui.workout
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -27,6 +46,9 @@ import id.ac.ub.athra.domain.time.WorkoutClock
 import id.ac.ub.athra.domain.time.elapsedSeconds
 import id.ac.ub.athra.ui.components.AthraCard
 import id.ac.ub.athra.ui.components.AthraChip
+import id.ac.ub.athra.ui.theme.Accent
+import id.ac.ub.athra.ui.theme.Border
+import id.ac.ub.athra.ui.theme.Surface
 import id.ac.ub.athra.ui.theme.Background
 import id.ac.ub.athra.ui.theme.Forest
 import id.ac.ub.athra.ui.theme.Ink
@@ -60,7 +82,6 @@ fun WorkoutFlowScreen(
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val density = LocalDensity.current
-    val largeFont = density.fontScale >= 1.5f
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
     var exerciseId by rememberSaveable(draft.session.id) {
         mutableStateOf(state.selectedExerciseId.ifBlank { draft.exercises.firstOrNull()?.exercise?.id.orEmpty() })
@@ -101,6 +122,21 @@ fun WorkoutFlowScreen(
     val selectedExerciseId = selected?.exercise?.id
     val selectedIndex = draft.exercises.indexOfFirst { it.exercise.id == exerciseId }
     val nextExercise = if (selectedIndex >= 0) draft.exercises.getOrNull(selectedIndex + 1) else null
+    var showSetForm by rememberSaveable(draft.session.id, selectedExerciseId) {
+        mutableStateOf(selected?.sets.isNullOrEmpty() || state.repsInput.isNotBlank() || state.weightInput.isNotBlank())
+    }
+    var showReference by rememberSaveable(draft.session.id, selectedExerciseId) { mutableStateOf(false) }
+    var showExerciseMenu by remember { mutableStateOf(false) }
+    val selectExercise: (String) -> Unit = { id ->
+        exerciseId = id
+        onSelectExercise(id)
+        editingSetId = null
+        editingOriginalDisplay = null
+        editingOriginalKg = null
+        reps = ""
+        weight = ""
+        onClearSetForm()
+    }
 
     fun saveCurrentSet() {
         val exerciseIdToSave = selectedExerciseId ?: return
@@ -127,77 +163,99 @@ fun WorkoutFlowScreen(
         }
     }
 
-    Scaffold(containerColor = Background, topBar = {
-        TopAppBar(title = { Text(if (draft.session.status == SessionStatus.REVIEW) "Ringkasan" else "Workout aktif") },
-            navigationIcon = { TextButton(onClick = { confirmLeaveWorkout = true }) { Text("Kembali") } },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Background))
-    }, bottomBar = {
-        if (draft.session.status == SessionStatus.ACTIVE) {
-            Column(
-                modifier = Modifier.fillMaxWidth().imePadding().padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+    Scaffold(
+        containerColor = Background,
+        topBar = {
+            Row(
+                Modifier.fillMaxWidth().statusBarsPadding().height(64.dp).padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (imeVisible && selectedExerciseId != null) {
-                    Button(
-                        onClick = ::saveCurrentSet,
-                        enabled = !state.busy && !savingSet,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(if (savingSet) "Menyimpan…" else "Simpan set") }
-                } else {
+                IconButton(onClick = { confirmLeaveWorkout = true }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = Ink, modifier = Modifier.size(20.dp))
+                }
+                Text(
+                    if (draft.session.status == SessionStatus.REVIEW) "Ringkasan" else "Workout aktif",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Ink,
+                )
+            }
+        },
+        bottomBar = {
+            if (draft.session.status == SessionStatus.ACTIVE) {
+                Column(
+                    Modifier.fillMaxWidth().background(Background).navigationBarsPadding().imePadding()
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                ) {
                     Button(
                         onClick = {
-                            if (reps.isNotBlank() || weight.isNotBlank()) confirmUnsavedFinish = true
+                            if (imeVisible && selectedExerciseId != null) saveCurrentSet()
+                            else if (reps.isNotBlank() || weight.isNotBlank()) confirmUnsavedFinish = true
                             else scope.launch { onFinish(draft.session.id) }
                         },
-                        enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Selesai dan tinjau") }
+                        enabled = !state.busy && !savingSet,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Background),
+                    ) {
+                        Text(
+                            if (imeVisible && selectedExerciseId != null) {
+                                if (savingSet) "Menyimpan…" else "Simpan set"
+                            } else "Selesai dan tinjau",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                 }
             }
-        }
-    }) { inset ->
-        Column(Modifier.fillMaxSize().padding(inset).imePadding().verticalScroll(rememberScrollState()).padding(20.dp)) {
-            Text(draft.session.name, style = MaterialTheme.typography.headlineMedium, color = Ink)
+        },
+    ) { inset ->
+        Column(
+            Modifier.fillMaxSize().padding(inset).imePadding()
+                .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),
+        ) {
+            Spacer(Modifier.height(16.dp))
+            Text(draft.session.name, style = MaterialTheme.typography.headlineLarge, color = Ink)
             val muscleGroups = draft.exercises.map { it.exercise.primaryMuscleGroup }.distinct().joinToString(" · ")
             if (muscleGroups.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
                 Text(muscleGroups.uppercase(), style = MaterialTheme.typography.labelSmall, color = Secondary)
             }
-            Spacer(Modifier.height(16.dp))
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Forest),
+            Spacer(Modifier.height(24.dp))
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xFF294B36)).padding(18.dp),
             ) {
-                if (largeFont) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("DURASI BERJALAN", style = MaterialTheme.typography.labelSmall, color = Secondary)
-                        Text(timer, style = MaterialTheme.typography.headlineMedium, color = Ink)
-                        Text("${totals.setCount} set tersimpan", style = MaterialTheme.typography.titleMedium, color = Ink)
-                    }
-                } else Row(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text("DURASI BERJALAN", style = MaterialTheme.typography.labelSmall, color = Secondary)
-                        Text(timer, style = MaterialTheme.typography.headlineMedium, color = Ink)
+                        Text("DURASI BERJALAN", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB0C5B4))
+                        Spacer(Modifier.height(8.dp))
+                        Text(timer, style = MaterialTheme.typography.titleLarge.copy(fontSize = 30.sp, lineHeight = 36.sp), color = Ink)
                     }
-                    Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
-                        Text("SET TERSIMPAN", style = MaterialTheme.typography.labelSmall, color = Secondary)
-                        Text(totals.setCount.toString(), style = MaterialTheme.typography.headlineMedium, color = id.ac.ub.athra.ui.theme.Accent)
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("SET TERSIMPAN", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB0C5B4))
+                        Spacer(Modifier.height(8.dp))
+                        Text(totals.setCount.toString(), style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp), color = Accent)
                     }
                 }
+                Spacer(Modifier.height(14.dp))
+                val completedExercises = draft.exercises.count { it.sets.isNotEmpty() }
+                val progress = if (draft.exercises.isEmpty()) 0f else completedExercises.toFloat() / draft.exercises.size
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().height(5.dp).semantics {
+                        contentDescription = "$completedExercises dari ${draft.exercises.size} gerakan memiliki set tersimpan"
+                    },
+                    color = Accent,
+                    trackColor = Color(0xFF48664E),
+                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    drawStopIndicator = {},
+                )
             }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "${totals.repCount} repetisi · ${displayNumber(displayWeight(totals.volumeKg, weightUnit))} ${weightUnit.name.lowercase()} volume",
-                color = Secondary,
-            )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
 
             if (draft.session.status == SessionStatus.REVIEW) {
-                Text("${totals.exerciseCount} gerakan", style = MaterialTheme.typography.titleMedium)
+                Text("${totals.exerciseCount} gerakan", style = MaterialTheme.typography.titleMedium, color = Ink)
                 draft.exercises.filter { it.sets.isNotEmpty() }.forEach { item ->
                     val record = state.personalRecords.firstOrNull { it.exerciseId == item.exercise.id }
                     val status = when (record?.status) {
@@ -210,7 +268,7 @@ fun WorkoutFlowScreen(
                     Text(
                         "${item.exercise.name}: ${displayNumber(displayWeight(record?.currentMaxKg ?: item.sets.maxOf { it.weightKg }, weightUnit))} ${weightUnit.name.lowercase()} · $status" +
                             (record?.previousMaxKg?.let { " · sebelumnya ${displayNumber(displayWeight(it, weightUnit))} ${weightUnit.name.lowercase()}" } ?: ""),
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = 8.dp), color = Ink,
                     )
                 }
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -219,165 +277,198 @@ fun WorkoutFlowScreen(
                 TextButton(onClick = { scope.launch { onResume(draft.session.id) } }, enabled = !state.busy) { Text("Kembali memperbaiki") }
                 TextButton(onClick = { confirmDiscard = true }, enabled = !state.busy) { Text("Buang sesi") }
             } else {
-                Text("Gerakan aktif", style = MaterialTheme.typography.headlineSmall, color = Ink)
-                Spacer(Modifier.height(8.dp))
-                draft.exercises.forEach { item ->
-                    AthraCard(Modifier.padding(bottom = 12.dp)) {
-                    val selectExercise = {
-                        exerciseId = item.exercise.id
-                        onSelectExercise(item.exercise.id)
-                        editingSetId = null
-                        editingOriginalDisplay = null
-                        editingOriginalKg = null
-                        reps = ""
-                        weight = ""
-                        onClearSetForm()
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Gerakan aktif", style = MaterialTheme.typography.headlineSmall.copy(fontSize = 18.sp), color = Ink)
+                    IconButton(onClick = onOpenLibrary, enabled = !state.busy, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Default.Add, contentDescription = "Tambah gerakan", tint = Accent, modifier = Modifier.size(20.dp))
                     }
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                }
+                Spacer(Modifier.height(12.dp))
+                if (selected == null) {
+                    AthraCard {
+                        Text("Pilih gerakan pertamamu", style = MaterialTheme.typography.titleMedium, color = Ink)
+                        Text("Tambahkan gerakan untuk mulai mencatat set.", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                        TextButton(onClick = onOpenLibrary, enabled = !state.busy) { Text("+ Tambah gerakan") }
+                    }
+                } else {
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Surface)
+                            .border(1.dp, Border, RoundedCornerShape(20.dp)).padding(18.dp),
                     ) {
-                        Text(
-                            item.exercise.primaryMuscleGroup.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Secondary,
-                        )
-                        AthraChip(label = item.exercise.equipment.uppercase())
-                    }
-                    if (largeFont) {
-                        Column(Modifier.fillMaxWidth()) {
-                            TextButton(onClick = selectExercise, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                                Text(item.exercise.name)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(selected.exercise.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, color = Ink)
+                            AthraChip(label = selected.exercise.equipment.uppercase())
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(selected.exercise.primaryMuscleGroup, style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                        Spacer(Modifier.height(18.dp))
+                        HorizontalDivider(color = Border)
+                        Spacer(Modifier.height(12.dp))
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("SET", modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.labelSmall, color = Secondary)
+                            Text("BEBAN", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.labelSmall, color = Secondary)
+                            Text("REPETISI", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = Secondary)
+                            Spacer(Modifier.width(28.dp))
+                        }
+                        selected.sets.forEachIndexed { index, set ->
+                            val editing = editingSetId == set.id
+                            Row(
+                                Modifier.fillMaxWidth().padding(top = 2.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (editing || index == selected.sets.lastIndex) Forest else Color.Transparent)
+                                    .clickable(enabled = !state.busy) {
+                                        editingSetId = set.id
+                                        reps = set.reps.toString()
+                                        weight = displayWeight(set.weightKg, weightUnit).stripTrailingZeros().toPlainString()
+                                        editingOriginalDisplay = weight
+                                        editingOriginalKg = set.weightKg.stripTrailingZeros().toPlainString()
+                                        onEditSetInputs(set.id, reps, weight, editingOriginalKg.orEmpty())
+                                        showSetForm = true
+                                    }
+                                    .heightIn(min = 34.dp).padding(horizontal = 8.dp)
+                                    .semantics { contentDescription = "Set ${set.number}: ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()} × ${set.reps}. Ketuk untuk edit" },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("%02d".format(set.number), modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.bodyMedium, color = Ink)
+                                Text("${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodyMedium, color = Ink)
+                                Text(set.reps.toString(), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Ink)
+                                Icon(Icons.Default.Check, contentDescription = "Set tersimpan", tint = if (index == selected.sets.lastIndex) Secondary else Forest, modifier = Modifier.size(18.dp))
                             }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                TextButton(onClick = { onOpenExerciseDetails(item.exercise.id) }, enabled = !state.busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Detail") }
-                                TextButton(onClick = { pendingRemove = item }, enabled = !state.busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Hapus gerakan") }
+                        }
+                        if (selected.sets.isEmpty()) {
+                            Text("Belum ada set tersimpan", style = MaterialTheme.typography.bodyMedium, color = Secondary, modifier = Modifier.padding(vertical = 10.dp))
+                        }
+                        if (showSetForm) {
+                            Spacer(Modifier.height(14.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                OutlinedTextField(
+                                    value = weight,
+                                    onValueChange = { weight = it; onUpdateSetInputs(reps, weight) },
+                                    label = { Text("Beban (${weightUnit.name.lowercase()})") },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                OutlinedTextField(
+                                    value = reps,
+                                    onValueChange = { reps = it; onUpdateSetInputs(reps, weight) },
+                                    label = { Text("Repetisi") },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                                    modifier = Modifier.weight(1f),
+                                )
                             }
+                            Spacer(Modifier.height(8.dp))
+                            if (!imeVisible) Button(
+                                onClick = ::saveCurrentSet,
+                                enabled = !state.busy && !savingSet,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Forest, contentColor = Accent),
+                                shape = RoundedCornerShape(10.dp),
+                            ) { Text(if (savingSet) "Menyimpan…" else if (editingSetId == null) "Simpan set" else "Simpan perubahan set") }
+                            if (editingSetId != null) TextButton(onClick = {
+                                val id = editingSetId
+                                scope.launch {
+                                    if (id != null) onDeleteSet(draft.session.id, id)
+                                    editingSetId = null
+                                    editingOriginalDisplay = null
+                                    editingOriginalKg = null
+                                    reps = ""; weight = ""
+                                    onClearSetForm()
+                                }
+                            }, enabled = !state.busy) { Text("Hapus set", color = MaterialTheme.colorScheme.error) }
                         }
-                    } else {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            TextButton(onClick = selectExercise, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text(item.exercise.name) }
-                            TextButton(onClick = { onOpenExerciseDetails(item.exercise.id) }, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Detail") }
-                            TextButton(onClick = { pendingRemove = item }, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Hapus gerakan") }
-                        }
-                    }
-                    item.sets.forEach { set ->
-                        val setLabel = "${set.number}.  ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()} × ${set.reps}"
-                        val editSet = {
-                                    exerciseId = item.exercise.id
-                                    onSelectExercise(item.exercise.id)
-                                    editingSetId = set.id
-                                    reps = set.reps.toString()
-                                    weight = displayWeight(set.weightKg, weightUnit).stripTrailingZeros().toPlainString()
-                                    editingOriginalDisplay = weight
-                                    editingOriginalKg = set.weightKg.stripTrailingZeros().toPlainString()
-                                    onEditSetInputs(set.id, reps, weight, editingOriginalKg.orEmpty())
-                        }
-                        val deleteSet: () -> Unit = {
-                            scope.launch {
-                                    onDeleteSet(draft.session.id, set.id)
-                                    if (editingSetId == set.id) {
-                                        editingSetId = null
-                                        editingOriginalDisplay = null
-                                        editingOriginalKg = null
-                                        onClearSetForm()
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { showSetForm = !showSetForm }, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 0.dp)) {
+                                Text(if (showSetForm) "Tutup input" else "+ Tambah set", style = MaterialTheme.typography.labelMedium, color = Accent)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { onOpenExerciseDetails(selected.exercise.id) }, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                                    Text("Detail", style = MaterialTheme.typography.labelMedium, color = Secondary)
+                                }
+                                Box {
+                                    IconButton(onClick = { showExerciseMenu = true }, modifier = Modifier.size(32.dp)) {
+                                        Icon(Icons.Default.MoreHoriz, contentDescription = "Opsi gerakan", tint = Secondary, modifier = Modifier.size(20.dp))
+                                    }
+                                    DropdownMenu(expanded = showExerciseMenu, onDismissRequest = { showExerciseMenu = false }) {
+                                        DropdownMenuItem(text = { Text("Riwayat latihan terakhir") }, onClick = { showReference = !showReference; showExerciseMenu = false })
+                                        DropdownMenuItem(text = { Text("Hapus gerakan") }, onClick = { pendingRemove = selected; showExerciseMenu = false }, enabled = !state.busy)
                                     }
                                 }
-                        }
-                        if (largeFont) {
-                            Column(Modifier.fillMaxWidth()) {
-                                TextButton(onClick = editSet, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(setLabel) }
-                                TextButton(onClick = deleteSet, enabled = !state.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Hapus set") }
-                            }
-                        } else {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                TextButton(onClick = editSet, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text(setLabel) }
-                                TextButton(onClick = deleteSet, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Hapus set") }
                             }
                         }
                     }
-                    }
-                }
-                if (nextExercise != null) {
-                    Text("Berikutnya", style = MaterialTheme.typography.titleMedium, color = Ink)
-                    AthraCard(Modifier.padding(top = 8.dp, bottom = 12.dp)) {
-                        Text(nextExercise.exercise.name, style = MaterialTheme.typography.titleMedium, color = Ink)
-                        Text(
-                            "${nextExercise.exercise.primaryMuscleGroup} · ${nextExercise.exercise.equipment}",
-                            color = Secondary,
-                        )
-                    }
-                }
-                TextButton(onClick = onOpenLibrary, enabled = !state.busy) { Text("+ Tambah gerakan") }
-                if (selected != null) {
-                    AthraCard {
-                    Text("Catat set · ${selected.exercise.name}", style = MaterialTheme.typography.titleMedium, color = Ink)
-                    OutlinedTextField(
-                        value = reps,
-                        onValueChange = { reps = it; onUpdateSetInputs(reps, weight) },
-                        label = { Text("Repetisi") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = weight,
-                        onValueChange = { weight = it; onUpdateSetInputs(reps, weight) },
-                        label = { Text("Beban (${weightUnit.name.lowercase()})") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (!imeVisible) {
-                        Button(
-                            onClick = ::saveCurrentSet,
-                            enabled = !state.busy && !savingSet,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text(if (editingSetId == null) "Simpan set" else "Simpan perubahan set") }
-                    }
-                    }
-                    val reference = state.exerciseReferences[selected.exercise.id]
-                    Spacer(Modifier.height(12.dp))
-                    AthraCard {
-                    Text("Riwayat latihan terakhir", style = MaterialTheme.typography.titleSmall, color = Ink)
-                    if (reference == null) {
-                        Text("Belum ada riwayat untuk gerakan ini.", color = Secondary)
-                    } else {
-                        Text("${reference.session.name} · ${reference.sets.size} set", color = Secondary)
-                        reference.sets.forEach { previous ->
-                            Text("Set ${previous.number} · ${previous.reps} repetisi · ${displayNumber(displayWeight(previous.weightKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Ink)
-                        }
-                        selected.sets.forEach { current ->
-                            val previous = reference.sets.firstOrNull { it.number == current.number }
-                            if (previous == null) Text("Set ${current.number}: Tidak ada pembanding")
+                    if (showReference) {
+                        val reference = state.exerciseReferences[selected.exercise.id]
+                        Spacer(Modifier.height(12.dp))
+                        AthraCard {
+                            Text("Riwayat latihan terakhir", style = MaterialTheme.typography.titleSmall, color = Ink)
+                            if (reference == null) Text("Belum ada riwayat untuk gerakan ini.", color = Secondary)
                             else {
-                                val weightDelta = displayNumber(displayWeight(current.weightKg.subtract(previous.weightKg), weightUnit))
-                                val weightSign = if (current.weightKg > previous.weightKg) "+" else ""
-                                val repsDelta = current.reps - previous.reps
-                                val repsSign = if (repsDelta > 0) "+" else ""
-                                Text("Set ${current.number}: $weightSign$weightDelta ${weightUnit.name.lowercase()} · $repsSign$repsDelta repetisi")
+                                Text("${reference.session.name} · ${reference.sets.size} set", color = Secondary)
+                                reference.sets.forEach { previous ->
+                                    Text("Set ${previous.number} · ${previous.reps} repetisi · ${displayNumber(displayWeight(previous.weightKg, weightUnit))} ${weightUnit.name.lowercase()}", color = Ink)
+                                }
+                                selected.sets.forEach { current ->
+                                    val previous = reference.sets.firstOrNull { it.number == current.number }
+                                    if (previous == null) Text("Set ${current.number}: Tidak ada pembanding", color = Secondary)
+                                    else {
+                                        val weightDelta = displayNumber(displayWeight(current.weightKg.subtract(previous.weightKg), weightUnit))
+                                        val weightSign = if (current.weightKg > previous.weightKg) "+" else ""
+                                        val repsDelta = current.reps - previous.reps
+                                        val repsSign = if (repsDelta > 0) "+" else ""
+                                        Text("Set ${current.number}: $weightSign$weightDelta ${weightUnit.name.lowercase()} · $repsSign$repsDelta repetisi", color = Ink)
+                                    }
+                                }
+                                if (selected.sets.isNotEmpty()) {
+                                    val setDelta = selected.sets.size - reference.sets.size
+                                    val setSign = if (setDelta > 0) "+" else ""
+                                    Text("Set: ${selected.sets.size} vs ${reference.sets.size} · Δ $setSign$setDelta", color = Ink)
+                                    val currentVolume = selected.sets.fold(java.math.BigDecimal.ZERO) { total, set -> total.add(set.weightKg.multiply(java.math.BigDecimal.valueOf(set.reps.toLong()))) }
+                                    val volumeDelta = currentVolume.subtract(reference.volumeKg)
+                                    val volumeSign = if (volumeDelta.signum() > 0) "+" else ""
+                                    Text("Volume gerakan: ${displayNumber(displayWeight(currentVolume, weightUnit))} ${weightUnit.name.lowercase()} · Δ $volumeSign${displayNumber(displayWeight(volumeDelta, weightUnit))}", color = Ink)
+                                }
                             }
                         }
-                        if (selected.sets.isNotEmpty()) {
-                            val setDelta = selected.sets.size - reference.sets.size
-                            val setSign = if (setDelta > 0) "+" else ""
-                            Text("Set: ${selected.sets.size} vs ${reference.sets.size} · Δ $setSign$setDelta")
-                            val currentVolume = selected.sets.fold(java.math.BigDecimal.ZERO) { total, set ->
-                                total.add(set.weightKg.multiply(java.math.BigDecimal.valueOf(set.reps.toLong())))
-                            }
-                            val volumeDelta = currentVolume.subtract(reference.volumeKg)
-                            val volumeSign = if (volumeDelta.signum() > 0) "+" else ""
-                            Text("Volume gerakan: ${displayNumber(displayWeight(currentVolume, weightUnit))} ${weightUnit.name.lowercase()} · Δ $volumeSign${displayNumber(displayWeight(volumeDelta, weightUnit))}")
-                        }
-                    }
                     }
                 }
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Spacer(Modifier.height(12.dp))
-                TextButton(onClick = { confirmDiscard = true }, enabled = !state.busy) { Text("Buang sesi") }
+                val otherExercises = draft.exercises.filter { it.exercise.id != selectedExerciseId }
+                if (otherExercises.isNotEmpty()) {
+                    Spacer(Modifier.height(24.dp))
+                    Text("Berikutnya", style = MaterialTheme.typography.headlineSmall.copy(fontSize = 18.sp), color = Ink)
+                    Spacer(Modifier.height(16.dp))
+                    val ordered = if (nextExercise == null) otherExercises else listOf(nextExercise) + otherExercises.filter { it.exercise.id != nextExercise.exercise.id }
+                    ordered.forEach { item ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(bottom = 10.dp)
+                                .clip(RoundedCornerShape(16.dp)).background(Surface)
+                                .border(1.dp, Border, RoundedCornerShape(16.dp))
+                                .clickable(enabled = !state.busy) { selectExercise(item.exercise.id) }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(Modifier.size(42.dp).clip(CircleShape).background(Forest), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.FitnessCenter, contentDescription = null, tint = Accent.copy(alpha = 0.65f), modifier = Modifier.size(20.dp))
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(item.exercise.name, style = MaterialTheme.typography.titleSmall, color = Ink)
+                                Spacer(Modifier.height(4.dp))
+                                Text("${item.exercise.primaryMuscleGroup} · ${item.sets.size} set", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                            }
+                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Secondary, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { confirmDiscard = true }, enabled = !state.busy) { Text("Buang sesi", color = Secondary, style = MaterialTheme.typography.labelMedium) }
             }
+            Spacer(Modifier.height(12.dp))
         }
     }
 
