@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -78,7 +77,7 @@ fun AthraBrandHeader(onProfile: (() -> Unit)? = null) {
         if (onProfile != null) {
             IconButton(onClick = onProfile, modifier = Modifier.size(48.dp)) {
                 Box(Modifier.size(32.dp).clip(CircleShape).background(Forest), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.PersonOutline, "Buka profil", tint = Accent, modifier = Modifier.size(20.dp))
+                    Icon(AthraIcons.Profile, "Buka profil", tint = Accent, modifier = Modifier.size(20.dp))
                 }
             }
         }

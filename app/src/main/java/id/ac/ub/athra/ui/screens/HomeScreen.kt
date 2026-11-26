@@ -12,11 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -207,7 +203,7 @@ private fun RecentSessionRow(session: WorkoutSession, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(38.dp).clip(CircleShape).background(Forest), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.FitnessCenter, null, tint = Accent, modifier = Modifier.size(20.dp))
+            Icon(AthraIcons.Workout, null, tint = Accent, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -226,10 +222,10 @@ private fun RecentSessionRow(session: WorkoutSession, onClick: () -> Unit) {
 @Composable
 fun AthraBottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val items = listOf(
-        "Beranda" to Icons.Outlined.Home,
-        "Latihan" to Icons.Outlined.FitnessCenter,
-        "Progress" to Icons.AutoMirrored.Outlined.ShowChart,
-        "Profil" to Icons.Outlined.PersonOutline,
+        "Beranda" to AthraIcons.Home,
+        "Latihan" to AthraIcons.Workout,
+        "Progress" to AthraIcons.Progress,
+        "Profil" to AthraIcons.Profile,
     )
     Column(Modifier.fillMaxWidth().background(Color(0xFF121A15)).navigationBarsPadding()) {
         HorizontalDivider(color = Border, thickness = 1.dp)

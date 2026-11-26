@@ -463,7 +463,7 @@ fun WorkoutFlowScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Box(Modifier.size(42.dp).clip(CircleShape).background(Forest), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.FitnessCenter, contentDescription = null, tint = Accent.copy(alpha = 0.65f), modifier = Modifier.size(20.dp))
+                                Icon(id.ac.ub.athra.ui.components.AthraIcons.Workout, contentDescription = null, tint = Accent.copy(alpha = 0.65f), modifier = Modifier.size(20.dp))
                             }
                             Column(Modifier.weight(1f)) {
                                 Text(item.exercise.name, style = MaterialTheme.typography.titleSmall, color = Ink)
