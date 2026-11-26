@@ -59,7 +59,7 @@ private fun WorkoutPageBar(title: String, onBack: () -> Unit) {
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = Ink, modifier = Modifier.size(20.dp))
         }
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = Ink)
+        Text(title, style = MaterialTheme.typography.titleMedium, color = Ink)
     }
 }
 
@@ -203,8 +203,8 @@ fun ExerciseLibraryScreen(
                         Modifier.clip(CircleShape).background(if (selected) Color(0xFF345139) else Surface)
                             .border(1.dp, if (selected) Color.Transparent else Border, CircleShape)
                             .clickable(role = Role.Button) { onFilterChange(group) }
-                            .padding(horizontal = 15.dp, vertical = 10.dp),
-                    ) { Text(group, color = if (selected) Ink else Secondary, style = MaterialTheme.typography.labelLarge) }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                    ) { Text(group, color = if (selected) Ink else Secondary, style = MaterialTheme.typography.labelMedium) }
                 }
                 IconButton(onClick = onOpenFilters, modifier = Modifier.size(38.dp)) {
                     Icon(Icons.Default.Tune, contentDescription = "Semua filter gerakan", tint = Secondary, modifier = Modifier.size(20.dp))
@@ -397,7 +397,7 @@ fun WorkoutSummaryScreen(
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 SummaryMetric("Durasi", durationLabel, Modifier.weight(1f))
-                SummaryMetric("Volume · ${weightUnit.name.lowercase()}", displayNumber(displayWeight(totals.volumeKg, weightUnit)), Modifier.weight(1f))
+                SummaryMetric("Volume · ${weightUnit.name.lowercase()}", summaryVolume(displayWeight(totals.volumeKg, weightUnit)), Modifier.weight(1f))
                 SummaryMetric("Set selesai", totals.setCount.toString(), Modifier.weight(1f))
             }
             Spacer(Modifier.height(20.dp))
@@ -457,3 +457,8 @@ private fun SummaryMetric(label: String, value: String, modifier: Modifier = Mod
         Text(label, style = MaterialTheme.typography.labelSmall, color = Secondary)
     }
 }
+
+private fun summaryVolume(value: java.math.BigDecimal): String =
+    if (value >= java.math.BigDecimal("10000")) {
+        "${displayNumber(value.divide(java.math.BigDecimal("1000"), 1, java.math.RoundingMode.HALF_UP))}k"
+    } else displayNumber(value)

@@ -4,9 +4,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performScrollTo
 import id.ac.ub.athra.domain.model.Exercise
 import id.ac.ub.athra.domain.model.PersonalRecord
 import id.ac.ub.athra.domain.model.PersonalRecordStatus
@@ -45,10 +47,10 @@ class FlowSmokeTest {
             AuthScreen(AuthUiState(restoring = false), onSignIn = { _, _ -> }, onSignUp = { _, _, _, _ -> })
         }
 
-        compose.onNodeWithText("Selamat datang kembali").assertIsDisplayed()
-        compose.onNodeWithText("Belum punya akun? Daftar").performClick()
-        compose.onNodeWithText("Buat akun").assertIsDisplayed()
-        compose.onNodeWithText("Konfirmasi password").assertIsDisplayed()
+        compose.onNodeWithText("Selamat datang kembali.").assertIsDisplayed()
+        compose.onNodeWithText("Buat akun").performClick()
+        compose.onNodeWithText("Buat akun.").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Konfirmasi password").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -58,7 +60,7 @@ class FlowSmokeTest {
             PreWorkoutScreen(hasDraft = true, onContinueDraft = { resumed = true })
         }
 
-        compose.onNodeWithText("Sesi latihan belum selesai").assertIsDisplayed()
+        compose.onNodeWithText("Sesi belum selesai").assertIsDisplayed()
         compose.onNodeWithText("Lanjutkan sesi").performClick()
         assertTrue(resumed)
     }
@@ -88,8 +90,8 @@ class FlowSmokeTest {
             PreWorkoutScreen(loading = true, onBeginSession = { started = true })
         }
 
-        compose.onNodeWithText("Memeriksa sesi tersimpan…").assertIsDisplayed()
-        assertTrue(compose.onAllNodesWithText("Mulai workout").fetchSemanticsNodes().isEmpty())
+        compose.onNodeWithText("Memeriksa sesi…").assertIsDisplayed()
+        assertTrue(compose.onAllNodesWithText("Mulai sesi").fetchSemanticsNodes().isEmpty())
         compose.runOnIdle { assertTrue(!started) }
     }
 
@@ -105,7 +107,7 @@ class FlowSmokeTest {
                 onNavigate = {},
             )
         }
-        compose.onNodeWithText("30 hari").performClick()
+        compose.onNodeWithText("30H").performClick()
         assertTrue(selectedPeriod == 30)
     }
 
@@ -147,8 +149,8 @@ class FlowSmokeTest {
             )
         }
 
-        compose.onNodeWithText("Ringkasan workout").assertIsDisplayed()
-        compose.onNodeWithText("Rekor baru · 32 kg · sebelumnya 30 kg").assertIsDisplayed()
+        compose.onNodeWithText("Ringkasan").assertIsDisplayed()
+        compose.onNodeWithText("Rekor baru · 32 kg · sebelumnya 30 kg").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Simpan sesi").performClick()
         compose.runOnIdle { assertTrue(saved) }
     }
@@ -166,8 +168,8 @@ class FlowSmokeTest {
             )
         }
 
-        compose.onNodeWithText("Nama").performTextInput("  Atlet ATHRA  ")
-        compose.onNodeWithText("Simpan").performClick()
+        compose.onNodeWithContentDescription("Nama tampilan").performTextInput("  Atlet ATHRA  ")
+        compose.onNodeWithText("Simpan profil").performClick()
         compose.runOnIdle { assertEquals("Atlet ATHRA", savedName) }
     }
 
@@ -179,7 +181,7 @@ class FlowSmokeTest {
         }
         compose.onNodeWithText("Pound (lb)").performClick()
         assertTrue(savedUnit == null)
-        compose.onNodeWithText("Simpan").performClick()
+        compose.onNodeWithText("Simpan preferensi").performClick()
         assertTrue(savedUnit == WeightUnit.LB)
     }
 
@@ -248,7 +250,7 @@ class FlowSmokeTest {
             )
         }
 
-        compose.onNodeWithText("Buang sesi").performClick()
+        compose.onNodeWithText("Buang sesi").performScrollTo().performClick()
         compose.onAllNodesWithText("Buang sesi").get(1).performClick()
         compose.waitForIdle()
         compose.runOnIdle { assertTrue(!exited) }

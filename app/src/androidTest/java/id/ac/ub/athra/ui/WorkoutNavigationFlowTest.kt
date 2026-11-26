@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -112,18 +113,18 @@ class WorkoutNavigationFlowTest {
 
         compose.waitUntil(5_000) { !workoutViewModel.state.value.draftLoading }
         compose.onNodeWithText("Mulai workout").performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Siap berlatih?").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Pilih caramu berlatih hari ini.").fetchSemanticsNodes().isNotEmpty() }
         compose.waitUntil(5_000) { !workoutViewModel.state.value.draftLoading }
-        compose.onAllNodesWithText("Mulai workout").get(1).performClick()
+        compose.onNodeWithText("Mulai sesi").performClick()
 
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Pilih gerakan").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Pustaka gerakan").fetchSemanticsNodes().isNotEmpty() }
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Bench Press").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Tambahkan Bench Press").assertIsDisplayed().performClick()
 
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Repetisi").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Detail").performClick()
-        compose.onNodeWithText("Detail gerakan").assertIsDisplayed()
-        compose.onNodeWithText("Kembali").performClick()
+        compose.onAllNodesWithText("Detail gerakan").get(0).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Kembali").performClick()
         compose.onNodeWithText("Repetisi").assertIsDisplayed()
         compose.onNodeWithText("Repetisi").performTextInput("10")
         compose.onNodeWithText("Beban (kg)").performTextInput("32")
@@ -147,7 +148,7 @@ class WorkoutNavigationFlowTest {
             compose.onRoot().printToLog("WorkoutNavigationFlowTest")
             throw error
         }
-        compose.onNodeWithText("Beban (kg)").performImeAction()
+        compose.onNodeWithText("Repetisi").performImeAction()
         compose.waitForIdle()
         compose.waitUntil(5_000) {
             runCatching { compose.onNodeWithText("Selesai dan tinjau").assertIsEnabled() }.isSuccess
@@ -157,7 +158,7 @@ class WorkoutNavigationFlowTest {
         compose.waitUntil(5_000) {
             runBlocking { repository.getDraft("nav-test-user")?.session?.status?.name == "REVIEW" }
         }
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Ringkasan workout").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Ringkasan").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Simpan sesi").performClick()
         compose.waitUntil(5_000) {
             runBlocking { database.workoutDao().getCompleted("nav-test-user").size == 1 }
@@ -168,24 +169,24 @@ class WorkoutNavigationFlowTest {
         assertEquals(1, completed.size)
         assertNotNull(runBlocking { repository.getWorkoutDetail("nav-test-user", completed.single().sessionId) })
 
-        compose.onNodeWithText("Lihat semua").performClick()
+        compose.onNodeWithText("Lihat semua").performScrollTo().performClick()
         compose.onNodeWithText("Riwayat latihan").assertIsDisplayed()
         compose.onNodeWithText(completed.single().name).performClick()
         compose.onNodeWithText("Detail latihan").assertIsDisplayed()
         compose.onNodeWithText("Bench Press").assertIsDisplayed()
-        compose.onNodeWithText("Kembali").performClick()
+        compose.onNodeWithContentDescription("Kembali").performClick()
         compose.onNodeWithText("Profil").performClick()
         compose.waitUntil(5_000) {
             compose.onAllNodesWithText("Edit profil").fetchSemanticsNodes().isNotEmpty()
         }
 
         compose.onNodeWithText("Edit profil").performClick()
-        compose.onNodeWithText("Nama").performTextReplacement("Nama Baru")
-        compose.onNodeWithText("Simpan").performClick()
+        compose.onNodeWithContentDescription("Nama tampilan").performTextReplacement("Nama Baru")
+        compose.onNodeWithText("Simpan profil").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Nama Baru").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Preferensi satuan").performClick()
+        compose.onNodeWithText("Satuan beban").performScrollTo().performClick()
         compose.onNodeWithText("Pound (lb)").performClick()
-        compose.onNodeWithText("Simpan").performClick()
+        compose.onNodeWithText("Simpan preferensi").performClick()
         compose.waitUntil(5_000) { savedUnit == WeightUnit.LB }
     }
 
@@ -238,14 +239,14 @@ class WorkoutNavigationFlowTest {
         }
         compose.onNodeWithText("Lanjutkan sesi").performClick()
         compose.waitUntil(5_000) {
-            compose.onAllNodesWithText("Ringkasan workout").fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText("Ringkasan").fetchSemanticsNodes().isNotEmpty()
         }
 
-        compose.onNodeWithText("Kembali memperbaiki").performClick()
+        compose.onNodeWithContentDescription("Perbaiki sesi").performClick()
         compose.waitUntil(5_000) {
             compose.onAllNodesWithText("Workout aktif").fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithText("30 kg × 12", substring = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Set 1: 30 kg × 12. Ketuk untuk edit").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Selesai dan tinjau").assertIsDisplayed()
         assertEquals("ACTIVE", runBlocking { repository.getDraft("nav-test-user")?.session?.status?.name })
     }
