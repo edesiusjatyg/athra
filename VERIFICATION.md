@@ -4,7 +4,7 @@
 
 Rebuild visual mencakup delapan layar utama dan enam supporting screens dari PDF lokal; Workout Detail memakai sistem visual yang sama. Font Inter kini memakai instance statis untuk bobot 400/500/600/700; seluruh slot typography dan color roles diatur. Home, Active Workout, Library, Summary, Progress, Profile, Auth, Pre-workout, dan supporting flows dicocokkan dengan render PDF.
 
-**Hasil terbaru:** `assembleDebug`, `assembleRelease`, `testDebugUnitTest` (**14/14**), `compileDebugAndroidTestKotlin`, `lintDebug`, dan `updateDebugScreenshotTest` lulus. Satu lint run awal terhenti saat source tes masih diedit; run akhir dengan source stabil lulus.
+**Hasil terbaru:** `assembleDebug`, `assembleRelease`, `testDebugUnitTest` (**14/14**), `compileDebugAndroidTestKotlin`, `lintDebug`, `updateDebugScreenshotTest`, dan `validateDebugScreenshotTest` lulus. Satu lint run awal terhenti saat source tes masih diedit; run akhir dengan source stabil lulus.
 
 15 screenshot fixture dirender memakai native Compose Layoutlib pada normal font scale. Reviewer independen **GPT-6.1 Sol high** memberi verdict **ship untuk lingkup visual normal-font** dan menilai seluruh temuan material sebelumnya selesai. Lihat [`screenshots/ui-rebuild/README.md`](screenshots/ui-rebuild/README.md), overview, dan baseline PNG untuk bukti serta cara reproduksi.
 

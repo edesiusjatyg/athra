@@ -35,3 +35,5 @@ Rotation and font scale 200% QA are deferred by explicit user request. Existing 
 An independent GPT-6.1 Sol reviewer at high reasoning inspected all 15 final native Compose renders against the local references. Verdict: **ship for the agreed normal-font visual scope**. The reviewer marked the named findings resolved: Profile number wrapping/equal metric heights; supporting row typography and density; Login/Progress/Profile top placement; Summary metric sizes; Home hero/CTA grouping; Active Workout table and controls; Progress chart proportions; compact Edit Profile fields; and shared outline navigation icons.
 
 This verdict establishes composition-level fidelity in the reviewed fixtures, not pixel-perfect identity or runtime verification. Indonesian text and supported-data substitutions remain intentional.
+
+Final checks: debug and release APK builds, 14 unit tests, Android UI test compilation, lint, capture generation, and screenshot baseline validation all passed. Device instrumentation execution remains unverified after the rebuild for the environment reason above.
