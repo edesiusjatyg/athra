@@ -57,9 +57,11 @@ fun ProgressScreen(
     var chartPage by remember(analytics, periodDays) { mutableIntStateOf(Int.MAX_VALUE) }
     val unit = weightUnit.name.lowercase()
     val daily = analytics?.dailyVolumeKg.orEmpty()
-    val pageCount = ((daily.size + 6) / 7).coerceAtLeast(1)
+    val daysPerPage = 8
+    val pageCount = ((daily.size + daysPerPage - 1) / daysPerPage).coerceAtLeast(1)
     val page = chartPage.coerceIn(0, pageCount - 1)
-    val visibleDays = daily.drop(page * 7).take(7)
+    val pageEnd = (daily.size - (pageCount - 1 - page) * daysPerPage).coerceAtLeast(0)
+    val visibleDays = daily.subList((pageEnd - daysPerPage).coerceAtLeast(0), pageEnd)
     Scaffold(containerColor = Background, bottomBar = { AthraBottomNav(2, onNavigate) }) { insets ->
         Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             Spacer(Modifier.height(24.dp))
@@ -73,6 +75,7 @@ fun ProgressScreen(
                 listOf(7, 30, 90).forEach { days ->
                     FilterChip(
                         selected = periodDays == days, onClick = { onPeriodChange(days) },
+                        modifier = Modifier.semantics { contentDescription = "$days hari" },
                         label = { Text("${days}H", fontWeight = FontWeight.SemiBold) },
                         shape = RoundedCornerShape(50),
                         colors = FilterChipDefaults.filterChipColors(containerColor = Surface, selectedContainerColor = Forest, labelColor = Secondary, selectedLabelColor = Ink),
@@ -88,31 +91,32 @@ fun ProgressScreen(
             }
             Spacer(Modifier.height(20.dp))
             Column(Modifier.fillMaxWidth().clip(CardShape).background(Surface).border(1.dp, Border, CardShape).padding(16.dp)) {
-                Text("Volume latihan", style = MaterialTheme.typography.headlineSmall, color = Ink)
-                Spacer(Modifier.height(6.dp))
-                Text("$periodDays hari terakhir · beban ($unit)", style = MaterialTheme.typography.bodyMedium, color = Secondary)
-                Spacer(Modifier.height(12.dp))
+                Text("Volume latihan", style = MaterialTheme.typography.titleMedium, color = Ink)
+                Spacer(Modifier.height(4.dp))
+                Text("$periodDays hari terakhir · beban ($unit)", style = MaterialTheme.typography.bodySmall, color = Secondary)
+                Spacer(Modifier.height(4.dp))
                 if (loading && analytics == null) {
-                    Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 } else if (analytics == null || analytics.sessionCount == 0) {
-                    Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) { Text(if (error != null) "Data belum dapat dimuat" else "Belum ada data latihan", color = Secondary, style = MaterialTheme.typography.bodyMedium) }
+                    Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { Text(if (error != null) "Data belum dapat dimuat" else "Belum ada data latihan", color = Secondary, style = MaterialTheme.typography.bodyMedium) }
                 } else {
                     val max = daily.maxOfOrNull { it.second }?.toFloat()?.coerceAtLeast(1f) ?: 1f
                     val description = visibleDays.joinToString { (day, value) -> "${dayLabel(day)}: ${displayNumber(displayWeight(value, weightUnit))} $unit" }
-                    Canvas(Modifier.fillMaxWidth().height(150.dp).semantics { contentDescription = description }) {
-                        val gap = 14.dp.toPx()
-                        val width = (size.width - gap * 8) / 7
+                    Canvas(Modifier.fillMaxWidth().height(120.dp).semantics { contentDescription = description }) {
+                        val columnWidth = size.width / visibleDays.size.coerceAtLeast(1)
+                        val width = (columnWidth - 14.dp.toPx()).coerceAtLeast(1f)
                         visibleDays.forEachIndexed { index, (_, value) ->
                             val height = (size.height * value.toFloat() / max).coerceAtLeast(4.dp.toPx())
-                            drawRoundRect(if (value.signum() > 0) Accent else Forest, Offset(gap + index * (width + gap), size.height - height), Size(width, height), CornerRadius(6.dp.toPx()))
+                            val x = index * columnWidth + (columnWidth - width) / 2
+                            drawRoundRect(if (value.signum() > 0) Accent else Forest, Offset(x, size.height - height), Size(width, height), CornerRadius(6.dp.toPx()))
                         }
                         drawLine(Border, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
                     }
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceAround) {
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceAround) {
                         visibleDays.forEach { (day, _) -> Text(dayLabel(day), color = Secondary, style = MaterialTheme.typography.labelSmall) }
                     }
                 }
-                Row(Modifier.fillMaxWidth().height(32.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth().height(24.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     IconButton(onClick = { chartPage = page - 1 }, enabled = page > 0) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Hari sebelumnya", tint = if (page > 0) Accent else Forest, modifier = Modifier.size(20.dp)) }
                     IconButton(onClick = { chartPage = page + 1 }, enabled = page < pageCount - 1) { Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Hari berikutnya", tint = if (page < pageCount - 1) Accent else Forest, modifier = Modifier.size(20.dp)) }
                 }

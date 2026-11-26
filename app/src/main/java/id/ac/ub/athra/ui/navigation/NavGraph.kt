@@ -390,6 +390,7 @@ fun AthraNavGraph(
             )
         }
         composable(Routes.Profile.route) {
+            LaunchedEffect(Unit) { workoutViewModel.refreshHomeAnalytics() }
             ProfileScreen(
                 userName = userName,
                 userEmail = userEmail,
