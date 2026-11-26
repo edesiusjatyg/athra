@@ -27,6 +27,7 @@ class AthraApplication : Application() {
         val projectId = BuildConfig.FIREBASE_PROJECT_ID
         val appId = BuildConfig.FIREBASE_APP_ID
         val apiKey = BuildConfig.FIREBASE_API_KEY
+        val emulatorEnabled = BuildConfig.DEBUG && BuildConfig.AUTH_EMULATOR_ENABLED
         if (projectId.isNotBlank() && appId.isNotBlank() && apiKey.isNotBlank()) {
             val options = FirebaseOptions.Builder()
                 .setProjectId(projectId)
@@ -36,7 +37,7 @@ class AthraApplication : Application() {
             val app = FirebaseApp.initializeApp(this, options)
                 ?: FirebaseApp.getInstance()
             firebaseAuth = FirebaseAuth.getInstance(app).also { auth ->
-                if (BuildConfig.AUTH_EMULATOR_ENABLED) {
+                if (emulatorEnabled) {
                     auth.useEmulator(BuildConfig.AUTH_EMULATOR_HOST, 9099)
                 }
             }

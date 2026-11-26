@@ -10,14 +10,19 @@ ksp {
 }
 
 fun buildConfigString(value: String): String =
-    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+    "String.valueOf(\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\")"
 
-val authEmulatorRequested =
-    providers.gradleProperty("athra.authEmulator").orNull?.toBooleanStrictOrNull() ?: false
 val authEmulatorHost = providers.gradleProperty("athra.authEmulatorHost").orElse("10.0.2.2").get()
 val firebaseProjectId = providers.gradleProperty("athra.firebase.projectId").orElse("").get()
 val firebaseAppId = providers.gradleProperty("athra.firebase.appId").orElse("").get()
 val firebaseApiKey = providers.gradleProperty("athra.firebase.apiKey").orElse("").get()
+val hasFirebaseConfiguration = listOf(firebaseProjectId, firebaseAppId, firebaseApiKey).all { it.isNotBlank() }
+val authEmulatorRequested = providers.gradleProperty("athra.authEmulator")
+    .orNull?.toBooleanStrict() ?: !hasFirebaseConfiguration
+
+// Read auth fields at runtime. Inlined constants can survive an incremental Kotlin
+// build when only -P properties change, leaving the installed app with stale config.
+fun buildConfigBoolean(value: Boolean): String = "Boolean.parseBoolean(\"$value\")"
 
 android {
     experimentalProperties["android.experimental.enableScreenshotTest"] = true
@@ -38,7 +43,7 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField("boolean", "AUTH_EMULATOR_ENABLED", authEmulatorRequested.toString())
+            buildConfigField("boolean", "AUTH_EMULATOR_ENABLED", buildConfigBoolean(authEmulatorRequested))
             buildConfigField("String", "AUTH_EMULATOR_HOST", buildConfigString(authEmulatorHost))
             buildConfigField(
                 "String",
@@ -61,7 +66,7 @@ android {
             )
         }
         release {
-            buildConfigField("boolean", "AUTH_EMULATOR_ENABLED", "false")
+            buildConfigField("boolean", "AUTH_EMULATOR_ENABLED", buildConfigBoolean(false))
             buildConfigField("String", "AUTH_EMULATOR_HOST", buildConfigString("127.0.0.1"))
             buildConfigField("String", "FIREBASE_PROJECT_ID", buildConfigString(firebaseProjectId))
             buildConfigField("String", "FIREBASE_APP_ID", buildConfigString(firebaseAppId))

@@ -31,7 +31,7 @@ Panduan singkat untuk menjalankan seluruh app ada di [how-to-run.md](how-to-run.
    adb shell monkey -p id.ac.ub.athra 1
    ```
 
-   Perintah terakhir membuka ATHRA di AVD. Jika Android Studio meminta memilih device, pilih AVD yang sama. Untuk memakai tombol **Run** Android Studio, tambahkan dua properti `athra.authEmulator=true` dan `athra.authEmulatorHost=127.0.0.1` ke `~/.gradle/gradle.properties`, lakukan Gradle Sync, lalu jalankan konfigurasi `app`. Pertahankan `adb reverse` dan Auth Emulator tetap berjalan.
+   Perintah terakhir membuka ATHRA di AVD. Jika Android Studio meminta memilih device, pilih AVD yang sama. Untuk tombol **Run** Android Studio, debug otomatis memakai Auth Emulator ketika konfigurasi production belum lengkap, dengan default host `10.0.2.2`. Jika memakai properti host `127.0.0.1`, pertahankan `adb reverse`. Auth Emulator harus tetap berjalan.
 
 5. Di ATHRA pilih **Daftar**, buat akun uji email/password, lalu masuk. Email dan password ini hanya hidup di Auth Emulator lokal; jangan pakai credential production.
 
@@ -57,7 +57,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Firebase Auth Emulator
 
-Langkah singkat menjalankan app ada di [how-to-run.md](how-to-run.md); detail konfigurasi ada di bagian [Menjalankan seluruh app secara lokal](#menjalankan-seluruh-app-secara-lokal). Auth Emulator berjalan hanya untuk build debug yang diaktifkan eksplisit; Firebase SDK Android menggunakan `10.0.2.2` sebagai host emulator bila tidak memakai port reverse.
+Langkah singkat menjalankan app ada di [how-to-run.md](how-to-run.md); detail konfigurasi ada di bagian [Menjalankan seluruh app secara lokal](#menjalankan-seluruh-app-secara-lokal). Auth Emulator aktif secara default pada build debug tanpa konfigurasi production lengkap dan dapat dipilih eksplisit lewat `athra.authEmulator`; Firebase SDK Android menggunakan `10.0.2.2` sebagai host emulator bila tidak memakai port reverse.
 
 ```sh
 adb reverse tcp:9099 tcp:9099
@@ -76,7 +76,7 @@ athra.firebase.appId=YOUR_ANDROID_APP_ID
 athra.firebase.apiKey=YOUR_WEB_API_KEY
 ```
 
-Jangan commit key atau file credential. Emulator tidak aktif pada build biasa; release selalu menonaktifkannya. Konfigurasi Firebase production belum disediakan di repository, sehingga production sign-in belum dapat diverifikasi.
+Jangan commit key atau file credential. Release selalu menonaktifkan emulator. Debug dengan konfigurasi production lengkap memilih production secara default; `-Pathra.authEmulator=false` menonaktifkan emulator secara eksplisit. Konfigurasi Firebase production belum disediakan di repository, sehingga production sign-in belum dapat diverifikasi.
 
 ## Offline dan penyimpanan
 
