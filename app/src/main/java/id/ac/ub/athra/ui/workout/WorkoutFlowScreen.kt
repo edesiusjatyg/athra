@@ -224,7 +224,7 @@ fun WorkoutFlowScreen(
             Spacer(Modifier.height(24.dp))
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
-                    .background(Color(0xFF294B36)).padding(18.dp),
+                    .background(Color(0xFF294B36)).padding(16.dp),
             ) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
@@ -238,7 +238,7 @@ fun WorkoutFlowScreen(
                         Text(totals.setCount.toString(), style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp), color = Accent)
                     }
                 }
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 val completedExercises = draft.exercises.count { it.sets.isNotEmpty() }
                 val progress = if (draft.exercises.isEmpty()) 0f else completedExercises.toFloat() / draft.exercises.size
                 LinearProgressIndicator(
@@ -249,6 +249,7 @@ fun WorkoutFlowScreen(
                     color = Accent,
                     trackColor = Color(0xFF48664E),
                     strokeCap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    gapSize = 0.dp,
                     drawStopIndicator = {},
                 )
             }
@@ -279,7 +280,7 @@ fun WorkoutFlowScreen(
             } else {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Gerakan aktif", style = MaterialTheme.typography.headlineSmall.copy(fontSize = 18.sp), color = Ink)
-                    IconButton(onClick = onOpenLibrary, enabled = !state.busy, modifier = Modifier.size(40.dp)) {
+                    IconButton(onClick = onOpenLibrary, enabled = !state.busy, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Add, contentDescription = "Tambah gerakan", tint = Accent, modifier = Modifier.size(20.dp))
                     }
                 }
@@ -293,15 +294,15 @@ fun WorkoutFlowScreen(
                 } else {
                     Column(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Surface)
-                            .border(1.dp, Border, RoundedCornerShape(20.dp)).padding(18.dp),
+                            .border(1.dp, Border, RoundedCornerShape(20.dp)).padding(start = 18.dp, top = 18.dp, end = 18.dp, bottom = 12.dp),
                     ) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(selected.exercise.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium, color = Ink)
+                            Text(selected.exercise.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium.copy(fontSize = 20.sp, lineHeight = 26.sp), color = Ink)
                             AthraChip(label = selected.exercise.equipment.uppercase())
                         }
                         Spacer(Modifier.height(6.dp))
                         Text(selected.exercise.primaryMuscleGroup, style = MaterialTheme.typography.bodyMedium, color = Secondary)
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(16.dp))
                         HorizontalDivider(color = Border)
                         Spacer(Modifier.height(12.dp))
                         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -312,6 +313,12 @@ fun WorkoutFlowScreen(
                         }
                         selected.sets.forEachIndexed { index, set ->
                             val editing = editingSetId == set.id
+                            val bodyweight = selected.exercise.equipment.equals("Bodyweight", ignoreCase = true)
+                            val weightLabel = when {
+                                bodyweight && set.weightKg.signum() == 0 -> "BW"
+                                bodyweight && set.weightKg.signum() > 0 -> "+${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}"
+                                else -> "${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}"
+                            }
                             Row(
                                 Modifier.fillMaxWidth().padding(top = 2.dp)
                                     .clip(RoundedCornerShape(8.dp))
@@ -325,12 +332,12 @@ fun WorkoutFlowScreen(
                                         onEditSetInputs(set.id, reps, weight, editingOriginalKg.orEmpty())
                                         showSetForm = true
                                     }
-                                    .heightIn(min = 34.dp).padding(horizontal = 8.dp)
+                                    .heightIn(min = 32.dp).padding(horizontal = 8.dp)
                                     .semantics { contentDescription = "Set ${set.number}: ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()} × ${set.reps}. Ketuk untuk edit" },
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text("%02d".format(set.number), modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.bodyMedium, color = Ink)
-                                Text("${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodyMedium, color = Ink)
+                                Text(weightLabel, modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.bodyMedium, color = Ink)
                                 Text(set.reps.toString(), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Ink)
                                 Icon(Icons.Default.Check, contentDescription = "Set tersimpan", tint = if (index == selected.sets.lastIndex) Secondary else Forest, modifier = Modifier.size(18.dp))
                             }
@@ -381,21 +388,24 @@ fun WorkoutFlowScreen(
                                 }
                             }, enabled = !state.busy) { Text("Hapus set", color = MaterialTheme.colorScheme.error) }
                         }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { showSetForm = !showSetForm }, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 0.dp)) {
-                                Text(if (showSetForm) "Tutup input" else "+ Tambah set", style = MaterialTheme.typography.labelMedium, color = Accent)
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                TextButton(onClick = { onOpenExerciseDetails(selected.exercise.id) }, enabled = !state.busy, contentPadding = PaddingValues(horizontal = 6.dp)) {
-                                    Text("Detail", style = MaterialTheme.typography.labelMedium, color = Secondary)
+                        Spacer(Modifier.height(6.dp))
+                        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                            Row(Modifier.fillMaxWidth().height(24.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { showSetForm = !showSetForm }, enabled = !state.busy, modifier = Modifier.height(24.dp), contentPadding = PaddingValues(0.dp)) {
+                                    Text(if (showSetForm) "Tutup input" else "+ Tambah set", style = MaterialTheme.typography.labelMedium, color = Accent)
                                 }
-                                Box {
-                                    IconButton(onClick = { showExerciseMenu = true }, modifier = Modifier.size(32.dp)) {
-                                        Icon(Icons.Default.MoreHoriz, contentDescription = "Opsi gerakan", tint = Secondary, modifier = Modifier.size(20.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(onClick = { onOpenExerciseDetails(selected.exercise.id) }, enabled = !state.busy, modifier = Modifier.height(24.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
+                                        Text("Detail", style = MaterialTheme.typography.labelMedium, color = Secondary)
                                     }
-                                    DropdownMenu(expanded = showExerciseMenu, onDismissRequest = { showExerciseMenu = false }) {
-                                        DropdownMenuItem(text = { Text("Riwayat latihan terakhir") }, onClick = { showReference = !showReference; showExerciseMenu = false })
-                                        DropdownMenuItem(text = { Text("Hapus gerakan") }, onClick = { pendingRemove = selected; showExerciseMenu = false }, enabled = !state.busy)
+                                    Box {
+                                        IconButton(onClick = { showExerciseMenu = true }, modifier = Modifier.size(24.dp)) {
+                                            Icon(Icons.Default.MoreHoriz, contentDescription = "Opsi gerakan", tint = Secondary, modifier = Modifier.size(20.dp))
+                                        }
+                                        DropdownMenu(expanded = showExerciseMenu, onDismissRequest = { showExerciseMenu = false }) {
+                                            DropdownMenuItem(text = { Text("Riwayat latihan terakhir") }, onClick = { showReference = !showReference; showExerciseMenu = false })
+                                            DropdownMenuItem(text = { Text("Hapus gerakan") }, onClick = { pendingRemove = selected; showExerciseMenu = false }, enabled = !state.busy)
+                                        }
                                     }
                                 }
                             }

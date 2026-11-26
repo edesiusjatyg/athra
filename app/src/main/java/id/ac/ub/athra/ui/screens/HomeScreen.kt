@@ -64,7 +64,7 @@ fun HomeScreen(
         Column(Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)) {
             Spacer(Modifier.height(12.dp))
             AthraBrandHeader(onProfile = { onNavigate(3) })
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
             val today = DateTimeFormatter.ofPattern("EEEE, d MMMM", IndonesianLocale)
                 .format(Instant.now().atZone(ZoneId.systemDefault()))
             Text(today.uppercase(IndonesianLocale), style = MaterialTheme.typography.labelSmall, color = Secondary)

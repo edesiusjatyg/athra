@@ -122,7 +122,10 @@ fun SectionHeader(title: String, action: String? = null, onAction: (() -> Unit)?
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = MaterialTheme.typography.headlineSmall, color = Ink, modifier = Modifier.weight(1f))
         if (action != null && onAction != null) {
-            TextButton(onClick = onAction, contentPadding = PaddingValues(start = 8.dp), modifier = Modifier.heightIn(min = 40.dp)) {
+            Row(
+                Modifier.clip(RoundedCornerShape(4.dp)).clickable(onClick = onAction).padding(start = 8.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(action, style = MaterialTheme.typography.labelSmall, color = Accent)
                 Spacer(Modifier.width(4.dp))
                 Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, modifier = Modifier.size(14.dp))
