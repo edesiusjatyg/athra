@@ -301,7 +301,7 @@ fun EditProfileScreen(initialName: String, email: String, error: String?, onBack
                 TextField(value = name, onValueChange = { name = it }, singleLine = true,
                     placeholder = { Text("Nama") },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Nama tampilan" },
                     colors = TextFieldDefaults.colors(focusedContainerColor = Surface, unfocusedContainerColor = Surface, focusedIndicatorColor = Accent, unfocusedIndicatorColor = Border),
                 )
             }
