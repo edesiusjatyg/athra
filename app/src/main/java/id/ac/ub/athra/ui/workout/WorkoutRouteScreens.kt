@@ -32,6 +32,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -87,13 +89,13 @@ private fun WorkoutInfoRow(title: String, subtitle: String, selected: Boolean = 
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (selected) Forest else Surface)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, color = Ink)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Secondary)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = Ink)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Secondary)
         }
         if (onClick != null) Icon(
             if (selected) Icons.Default.Check else Icons.Default.ChevronRight,
@@ -125,25 +127,31 @@ fun QuickStartScreen(
             Spacer(Modifier.height(10.dp))
             Text("Buat sesi latihan", style = MaterialTheme.typography.bodyMedium, color = Secondary)
             Spacer(Modifier.height(32.dp))
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Surface).padding(16.dp)) {
-                Text("Nama sesi", style = MaterialTheme.typography.headlineSmall, color = Ink)
-                BasicTextField(
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Surface).padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Nama sesi", style = MaterialTheme.typography.titleSmall, color = Ink)
+                    BasicTextField(
                     value = name,
                     onValueChange = onNameChange,
                     singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = Ink),
+                    textStyle = MaterialTheme.typography.bodySmall.copy(color = Ink),
                     cursorBrush = SolidColor(Accent),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).heightIn(min = 24.dp).focusRequester(focusRequester),
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp).heightIn(min = 20.dp).focusRequester(focusRequester).semantics { contentDescription = "Nama sesi" },
                     decorationBox = { inner ->
-                        Box { if (name.isEmpty()) Text("Workout baru", style = MaterialTheme.typography.bodyMedium, color = Secondary); inner() }
+                        Box { if (name.isEmpty()) Text("Workout baru", style = MaterialTheme.typography.bodySmall, color = Secondary); inner() }
                     },
-                )
+                    )
+                }
+                IconButton(onClick = { focusRequester.requestFocus() }, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Edit nama sesi", tint = Accent, modifier = Modifier.size(20.dp))
+                }
             }
             Spacer(Modifier.height(12.dp))
             WorkoutInfoRow("Tambah gerakan", "Pilih dari pustaka gerakan", onClick = { if (!busy) onStart() })
-            Spacer(Modifier.height(16.dp))
-            Text("Nama sesi dapat dikosongkan. Gerakan dipilih setelah sesi dibuat.", style = MaterialTheme.typography.bodyMedium, color = Secondary)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
             Spacer(Modifier.height(24.dp))
         }
@@ -239,7 +247,7 @@ fun ExerciseLibraryScreen(
 @Composable
 private fun ExerciseLibraryRow(exercise: Exercise, onClick: () -> Unit, onAdd: () -> Unit, busy: Boolean) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Surface).border(1.dp, Border, RoundedCornerShape(16.dp)).padding(12.dp),
+        Modifier.fillMaxWidth().heightIn(min = 78.dp).clip(RoundedCornerShape(16.dp)).background(Surface).border(1.dp, Border, RoundedCornerShape(16.dp)).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -322,15 +330,26 @@ fun ExerciseDetailsScreen(
             Spacer(Modifier.height(32.dp))
             WorkoutInfoRow(exercise.name, "${exercise.equipment} · ${exercise.primaryMuscleGroup}")
             Spacer(Modifier.height(12.dp))
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Surface).padding(16.dp)) {
-                Text("Performa terakhir", style = MaterialTheme.typography.headlineSmall, color = Ink)
-                Spacer(Modifier.height(8.dp))
-                if (reference == null) Text("Belum ada riwayat untuk gerakan ini.", style = MaterialTheme.typography.bodyMedium, color = Secondary)
-                else {
+            var showReferenceSets by remember(exercise.id) { mutableStateOf(false) }
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Surface)
+                    .clickable(enabled = reference != null, role = Role.Button) { showReferenceSets = !showReferenceSets }
+                    .semantics { contentDescription = if (showReferenceSets) "Tutup detail performa terakhir" else "Lihat detail performa terakhir" }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            ) {
+                Text("Performa terakhir", style = MaterialTheme.typography.titleSmall, color = Ink)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    reference?.sets?.joinToString(" · ") { it.reps.toString() }?.plus(" repetisi")
+                        ?: "Belum ada riwayat untuk gerakan ini.",
+                    style = MaterialTheme.typography.bodySmall, color = Secondary,
+                )
+                if (showReferenceSets && reference != null) {
+                    Spacer(Modifier.height(8.dp))
                     reference.sets.forEach { set ->
-                        Text("Set ${set.number} · ${set.reps} repetisi · ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}", style = MaterialTheme.typography.bodyMedium, color = Secondary)
+                        Text("Set ${set.number} · ${set.reps} repetisi · ${displayNumber(displayWeight(set.weightKg, weightUnit))} ${weightUnit.name.lowercase()}", style = MaterialTheme.typography.bodySmall, color = Secondary)
                     }
-                    Text("Volume ${displayNumber(displayWeight(reference.volumeKg, weightUnit))} ${weightUnit.name.lowercase()}", style = MaterialTheme.typography.bodyMedium, color = Secondary, modifier = Modifier.padding(top = 6.dp))
+                    Text("Volume ${displayNumber(displayWeight(reference.volumeKg, weightUnit))} ${weightUnit.name.lowercase()}", style = MaterialTheme.typography.bodySmall, color = Secondary, modifier = Modifier.padding(top = 6.dp))
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -452,7 +471,7 @@ fun WorkoutSummaryScreen(
 @Composable
 private fun SummaryMetric(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier.clip(RoundedCornerShape(16.dp)).background(Surface).border(1.dp, Border, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 18.dp)) {
-        Text(value, style = MaterialTheme.typography.titleLarge, color = Ink, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.headlineMedium, color = Ink, maxLines = 1)
         Spacer(Modifier.height(10.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = Secondary)
     }
